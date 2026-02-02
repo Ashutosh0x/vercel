@@ -1,5 +1,6 @@
 import path from 'path';
 import ms from 'ms';
+import plural from 'pluralize';
 import { Transform, type TransformCallback } from 'stream';
 import type { ChildProcess } from 'child_process';
 import getPort from 'get-port';
@@ -10,6 +11,7 @@ import {
   cloneEnv,
   getNodeBinPaths,
   spawnCommand,
+  NowBuildError,
   type BuilderV3,
 } from '@vercel/build-utils';
 import { checkForPort } from './port-utils';
@@ -18,6 +20,13 @@ import output from '../../output-manager';
 import { treeKill } from '../tree-kill';
 
 const STARTUP_TIMEOUT = ms('5m');
+
+export class ServiceStartError extends Error {
+  constructor(failureCount: number) {
+    super(`Failed to start ${plural('service', failureCount, true)}`);
+    this.name = 'ServiceStartError';
+  }
+}
 
 const SERVICE_COLORS = [
   chalk.cyan,
@@ -42,26 +51,36 @@ function createServiceLogger(
   const padding = ' '.repeat(maxNameLength - serviceName.length);
   const prefix = color(`[${serviceName}]`) + padding;
 
-  const createTransform = () =>
-    new Transform({
+  const createTransform = () => {
+    let buffer = '';
+    return new Transform({
       transform(
         chunk: Buffer,
         _encoding: BufferEncoding,
         callback: TransformCallback
       ) {
-        const text = chunk.toString();
-        const lines = text.split('\n');
-        const prefixed = lines
-          .map((line, index) => {
-            if (index === lines.length - 1 && line === '') {
-              return '';
-            }
-            return `${prefix} ${line}`;
-          })
-          .join('\n');
-        callback(null, prefixed);
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || '';
+        // Output complete lines with prefix
+        if (lines.length > 0) {
+          const prefixed = lines.map(line => `${prefix} ${line}`).join('\n');
+          callback(null, prefixed + '\n');
+        } else {
+          callback(null, '');
+        }
+      },
+      flush(callback: TransformCallback) {
+        // Output any remaining buffered content on close
+        if (buffer) {
+          callback(null, `${prefix} ${buffer}\n`);
+        } else {
+          callback(null, '');
+        }
       },
     });
+  };
 
   const stdout = createTransform();
   const stderr = createTransform();
@@ -127,22 +146,47 @@ export class ServicesOrchestrator {
     output.debug(`Starting ${this.resolvedServices.length} services`);
 
     const startPromises = this.resolvedServices.map((service, index) =>
-      this.startService(service, index)
+      this.startService(service, index).then(result => {
+        this.managedServices.set(result.name, result);
+        return result;
+      })
     );
 
-    try {
-      const results = await Promise.all(startPromises);
-      for (const result of results) {
-        this.managedServices.set(result.name, result);
+    const results = await Promise.allSettled(startPromises);
+
+    const failures = results.filter(
+      (r): r is PromiseRejectedResult => r.status === 'rejected'
+    );
+
+    if (failures.length > 0) {
+      // These errors are the same for all services, so only show once
+      const dedupeErrorCodes = new Set([
+        'PYTHON_EXTERNAL_VENV_DETECTED',
+        'UV_NOT_FOUND',
+      ]);
+      const shownErrorCodes = new Set<string>();
+
+      for (const failure of failures) {
+        const err = failure.reason;
+        if (err instanceof NowBuildError && dedupeErrorCodes.has(err.code)) {
+          if (!shownErrorCodes.has(err.code)) {
+            output.prettyError(err);
+            shownErrorCodes.add(err.code);
+          }
+        } else if (err instanceof NowBuildError) {
+          output.prettyError(err);
+        } else {
+          output.error(`${err}`);
+        }
       }
-      output.debug(
-        `All ${this.managedServices.size} services started successfully`
-      );
-    } catch (error) {
-      output.error(`${error}`);
+
       await this.stopAll();
-      throw error;
+      throw new ServiceStartError(failures.length);
     }
+
+    output.debug(
+      `All ${this.managedServices.size} services started successfully`
+    );
   }
 
   async stopAll(): Promise<void> {
@@ -315,6 +359,7 @@ export class ServicesOrchestrator {
         meta: {
           isDev: true,
           env,
+          serviceCount: this.resolvedServices.length,
         },
         files: {},
         onStdout: (data: Buffer) => logger.stdout.write(data),
@@ -340,6 +385,10 @@ export class ServicesOrchestrator {
       };
     } catch (err) {
       output.debug(`Failed to use startDevServer for ${service.name}: ${err}`);
+      // Re-throw NowBuildError so user-facing errors are displayed properly
+      if (err instanceof NowBuildError) {
+        throw err;
+      }
       return null;
     }
   }

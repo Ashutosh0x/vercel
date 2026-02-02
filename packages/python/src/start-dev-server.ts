@@ -10,6 +10,7 @@ import {
 } from './entrypoint';
 import { getDefaultPythonVersion } from './version';
 import { isInVirtualEnv, useVirtualEnv } from './utils';
+import { findUvBinary } from './uv';
 
 // Silence all Node.js warnings during the dev server lifecycle to avoid noise and only show the python logs.
 // Specifically, this is implemented to silence the [DEP0060] DeprecationWarning warning from the http-proxy library.
@@ -176,6 +177,30 @@ function createDevWsgiShim(
   }
 }
 
+interface PythonRunner {
+  command: string;
+  args: string[];
+}
+
+async function getMultiServicePythonRunner(
+  systemPython: string
+): Promise<PythonRunner> {
+  const uvPath = await findUvBinary(systemPython);
+  if (!uvPath) {
+    throw new NowBuildError({
+      code: 'UV_NOT_FOUND',
+      message:
+        'uv is required for multi-service mode but was not found. ' +
+        'Please install uv: https://docs.astral.sh/uv/getting-started/installation/',
+      link: 'https://docs.astral.sh/uv/getting-started/installation/',
+      action: 'Install uv',
+    });
+  }
+
+  debug(`Using "uv run" for multi-service dev`);
+  return { command: uvPath, args: ['run', 'python'] };
+}
+
 export const startDevServer: StartDevServer = async opts => {
   const {
     entrypoint: rawEntrypoint,
@@ -260,42 +285,66 @@ export const startDevServer: StartDevServer = async opts => {
   PENDING_STARTS.set(serverKey, childReady);
 
   try {
+    const { pythonPath: systemPython } = getDefaultPythonVersion(meta);
+    const venv = isInVirtualEnv();
+    const serviceCount = (meta.serviceCount as number | undefined) ?? 1;
+    const isMultiService = serviceCount > 1;
+
+    // In multi-service mode with an externally-activated venv is not supported.
+    if (venv && isMultiService) {
+      throw new NowBuildError({
+        code: 'PYTHON_EXTERNAL_VENV_DETECTED',
+        message:
+          `Detected an activated virtual environment at "${venv}". ` +
+          `In multi-service mode, Vercel CLI manages Python virtual environments automatically using uv. ` +
+          `Please deactivate your virtual environment before running "vercel dev".\n\n` +
+          `To deactivate, run: deactivate`,
+      });
+    }
+
+    let spawnCommand = systemPython;
+    let spawnArgsPrefix: string[] = [];
+
+    if (isMultiService) {
+      const runner = await getMultiServicePythonRunner(systemPython);
+      spawnCommand = runner.command;
+      spawnArgsPrefix = runner.args;
+      debug(
+        `Multi-service Python runner: ${spawnCommand} ${spawnArgsPrefix.join(' ')}`
+      );
+    } else if (venv) {
+      debug(`Running in virtualenv at ${venv}`);
+    } else {
+      const { pythonCmd: venvPythonCmd, venvRoot } = useVirtualEnv(
+        workPath,
+        env,
+        systemPython
+      );
+      spawnCommand = venvPythonCmd;
+      if (venvRoot) {
+        debug(`Using virtualenv at ${venvRoot}`);
+      } else {
+        debug('No virtualenv found');
+        try {
+          const yellow = '\x1b[33m';
+          const reset = '\x1b[0m';
+          const venvCmd =
+            process.platform === 'win32'
+              ? 'python -m venv .venv && .venv\\Scripts\\activate'
+              : 'python -m venv .venv && source .venv/bin/activate';
+          process.stderr.write(
+            `${yellow}Warning: no virtual environment detected in ${workPath}. Using system Python: ${pythonCmd}.${reset}\n` +
+              `If you are using a virtual environment, activate it before running "vercel dev", or create one: ${venvCmd}\n`
+          );
+        } catch (_) {
+          // ignore write errors
+        }
+      }
+    }
+
     // Now spawn the actual server process
     await new Promise<void>((resolve, reject) => {
       let resolved = false;
-      const { pythonPath: systemPython } = getDefaultPythonVersion(meta);
-      let pythonCmd = systemPython;
-      const venv = isInVirtualEnv();
-
-      if (venv) {
-        debug(`Running in virtualenv at ${venv}`);
-      } else {
-        const { pythonCmd: venvPythonCmd, venvRoot } = useVirtualEnv(
-          workPath,
-          env,
-          systemPython
-        );
-        pythonCmd = venvPythonCmd;
-        if (venvRoot) {
-          debug(`Using virtualenv at ${venvRoot}`);
-        } else {
-          debug('No virtualenv found');
-          try {
-            const yellow = '\x1b[33m';
-            const reset = '\x1b[0m';
-            const venvCmd =
-              process.platform === 'win32'
-                ? 'python -m venv .venv && .venv\\Scripts\\activate'
-                : 'python -m venv .venv && source .venv/bin/activate';
-            process.stderr.write(
-              `${yellow}Warning: no virtual environment detected in ${workPath}. Using system Python: ${pythonCmd}.${reset}\n` +
-                `If you are using a virtual environment, activate it before running "vercel dev", or create one: ${venvCmd}\n`
-            );
-          } catch (_) {
-            // ignore write errors
-          }
-        }
-      }
 
       if (framework !== 'flask') {
         // ASGI dev server (FastAPI, Starlette, Sanic, generic Python, etc.)
@@ -314,11 +363,12 @@ export const startDevServer: StartDevServer = async opts => {
 
         // Run the ASGI shim module directly
         const moduleToRun = devShimModule || modulePath;
-        const argv = ['-u', '-m', moduleToRun];
+        const pythonArgs = ['-u', '-m', moduleToRun];
+        const argv = [...spawnArgsPrefix, ...pythonArgs];
         debug(
-          `Starting ASGI dev server (${framework}): ${pythonCmd} ${argv.join(' ')}`
+          `Starting ASGI dev server (${framework}): ${spawnCommand} ${argv.join(' ')}`
         );
-        const child = spawn(pythonCmd, argv, {
+        const child = spawn(spawnCommand, argv, {
           cwd: workPath,
           env,
           stdio: ['inherit', 'pipe', 'pipe'],
@@ -393,9 +443,10 @@ export const startDevServer: StartDevServer = async opts => {
 
         const moduleToRun = devShimModule || modulePath;
         // Execute the shim as a module so its __main__ runner handles Werkzeug/wsgiref
-        const argv = ['-u', '-m', moduleToRun];
-        debug(`Starting Flask dev server: ${pythonCmd} ${argv.join(' ')}`);
-        const child = spawn(pythonCmd, argv, {
+        const pythonArgs = ['-u', '-m', moduleToRun];
+        const argv = [...spawnArgsPrefix, ...pythonArgs];
+        debug(`Starting Flask dev server: ${spawnCommand} ${argv.join(' ')}`);
+        const child = spawn(spawnCommand, argv, {
           cwd: workPath,
           env,
           stdio: ['inherit', 'pipe', 'pipe'],
