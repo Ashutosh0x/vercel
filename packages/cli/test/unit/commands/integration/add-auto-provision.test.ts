@@ -243,7 +243,7 @@ describe('integration add (auto-provision)', () => {
         )
       );
       expect(openMock).toHaveBeenCalledWith(
-        expect.stringMatching(/defaultResourceName=acme-product-gray-apple/)
+        expect.stringMatching(/defaultResourceName=acme-gray-apple/)
       );
       expect(openMock).toHaveBeenCalledWith(
         expect.stringMatching(/source=cli/)

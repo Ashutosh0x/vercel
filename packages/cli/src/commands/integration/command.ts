@@ -14,8 +14,7 @@ export const addSubcommand = {
   options: [
     {
       name: 'name',
-      description:
-        'Name for the resource (auto-generated if not provided)',
+      description: 'Name for the resource (auto-generated if not provided)',
       shorthand: 'n',
       type: String,
       deprecated: false,

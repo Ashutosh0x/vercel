@@ -89,7 +89,8 @@ export default async function main(client: Client) {
       }
       const resourceName = addParsedArgs.flags['--name'] as string | undefined;
 
-      return add(client, subArgs, resourceName);
+      // Pass only positional args (integration slug), not the raw subArgs which includes flags
+      return add(client, addParsedArgs.args, resourceName);
     }
     case 'list': {
       if (needHelp) {

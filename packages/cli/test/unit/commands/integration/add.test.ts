@@ -201,7 +201,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: acme-product-gray-apple
+- Name: acme-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -217,7 +217,7 @@ describe('integration', () => {
           await expect(client.stderr).toOutput('Select environments');
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
-            'acme-product-gray-apple successfully connected to vercel-integration-add'
+            'acme-gray-apple successfully connected to vercel-integration-add'
           );
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
@@ -248,7 +248,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: acme-product-gray-apple
+- Name: acme-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -283,7 +283,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: acme-product-gray-apple
+- Name: acme-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -410,7 +410,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: acme-product-gray-apple
+- Name: acme-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -445,7 +445,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: acme-product-gray-apple
+- Name: acme-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -485,7 +485,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: acme-product-gray-apple
+- Name: acme-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -523,7 +523,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: acme-product-gray-apple
+- Name: acme-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
