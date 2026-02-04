@@ -2,6 +2,7 @@ import { getCommandAliases } from '..';
 import output from '../../output-manager';
 import type Client from '../../util/client';
 import { parseArguments } from '../../util/get-args';
+import { printError } from '../../util/error';
 import { getFlagsSpecification } from '../../util/get-flags-specification';
 import getInvalidSubcommand from '../../util/get-invalid-subcommand';
 import getSubcommand from '../../util/get-subcommand';
@@ -75,7 +76,20 @@ export default async function main(client: Client) {
         return 0;
       }
       telemetry.trackCliSubcommandAdd(subcommandOriginal);
-      return add(client, subArgs);
+
+      // Parse add-specific flags
+      // argv structure: ['vercel', 'integration', 'add', ...addArgs]
+      const addFlagsSpec = getFlagsSpecification(addSubcommand.options);
+      let addParsedArgs;
+      try {
+        addParsedArgs = parseArguments(client.argv.slice(3), addFlagsSpec);
+      } catch (error) {
+        printError(error);
+        return 1;
+      }
+      const resourceName = addParsedArgs.flags['--name'] as string | undefined;
+
+      return add(client, subArgs, resourceName);
     }
     case 'list': {
       if (needHelp) {

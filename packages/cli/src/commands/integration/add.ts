@@ -17,6 +17,10 @@ import type {
 } from '../../util/integration/types';
 import { createMetadataWizard, type MetadataWizard } from './wizard';
 import { provisionStoreResource } from '../../util/integration/provision-store-resource';
+import {
+  generateDefaultResourceName,
+  validateResourceName,
+} from '../../util/integration/generate-resource-name';
 import { addAutoProvision } from './add-auto-provision';
 import { connectResourceToProject } from '../../util/integration-resource/connect-resource-to-project';
 import { fetchBillingPlans } from '../../util/integration/fetch-billing-plans';
@@ -28,7 +32,11 @@ import { createAuthorization } from '../../util/integration/create-authorization
 import sleep from '../../util/sleep';
 import { fetchAuthorization } from '../../util/integration/fetch-authorization';
 
-export async function add(client: Client, args: string[]) {
+export async function add(
+  client: Client,
+  args: string[],
+  resourceNameArg?: string
+) {
   const telemetry = new IntegrationAddTelemetryClient({
     opts: {
       store: client.telemetryEventStore,
@@ -47,9 +55,18 @@ export async function add(client: Client, args: string[]) {
     return 1;
   }
 
+  // Validate user-provided resource name if given
+  if (resourceNameArg) {
+    const validationError = validateResourceName(resourceNameArg);
+    if (validationError) {
+      output.error(validationError);
+      return 1;
+    }
+  }
+
   // Auto-provision: completely separate code path
   if (process.env.FF_AUTO_PROVISION_INSTALL === '1') {
-    return await addAutoProvision(client, integrationSlug);
+    return await addAutoProvision(client, integrationSlug, resourceNameArg);
   }
 
   const { contextName, team } = await getScope(client);
@@ -123,6 +140,10 @@ export async function add(client: Client, args: string[]) {
   const metadataSchema = product.metadataSchema;
   const metadataWizard = createMetadataWizard(metadataSchema);
 
+  // Generate resource name (use provided arg or auto-generate)
+  const resourceName =
+    resourceNameArg ?? generateDefaultResourceName(product.slug);
+
   // The provisioning via cli is possible when
   // 1. The integration was installed once (terms have been accepted)
   // 2. The provider-defined metadata is supported (does not use metadata expressions etc.)
@@ -149,7 +170,8 @@ export async function add(client: Client, args: string[]) {
         team.id,
         integration.id,
         product.id,
-        projectLink?.project?.id
+        projectLink?.project?.name,
+        resourceName
       );
     }
 
@@ -162,7 +184,8 @@ export async function add(client: Client, args: string[]) {
     integration,
     installation,
     product,
-    metadataWizard
+    metadataWizard,
+    resourceName
   );
 }
 
@@ -218,12 +241,9 @@ async function provisionResourceViaCLI(
   integration: Integration,
   installation: IntegrationInstallation,
   product: IntegrationProduct,
-  metadataWizard: MetadataWizard
+  metadataWizard: MetadataWizard,
+  name: string
 ) {
-  const name = await client.input.text({
-    message: 'What is the name of the resource?',
-  });
-
   const metadata = await metadataWizard.run(client);
 
   let billingPlans: BillingPlan[] | undefined;

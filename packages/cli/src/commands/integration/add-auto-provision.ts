@@ -11,6 +11,7 @@ import type {
   IntegrationProduct,
 } from '../../util/integration/types';
 import { connectResourceToProject } from '../../util/integration-resource/connect-resource-to-project';
+import { generateDefaultResourceName } from '../../util/integration/generate-resource-name';
 import cmd from '../../util/output/cmd';
 import indent from '../../util/output/indent';
 import { packageName } from '../../util/pkg-name';
@@ -20,7 +21,8 @@ import { createMetadataWizard } from './wizard';
 
 export async function addAutoProvision(
   client: Client,
-  integrationSlug: string
+  integrationSlug: string,
+  resourceNameArg?: string
 ) {
   const telemetry = new IntegrationAddTelemetryClient({
     opts: {
@@ -34,6 +36,8 @@ export async function addAutoProvision(
     output.error('Team not found');
     return 1;
   }
+
+  // Note: resourceNameArg validation already done in add.ts before calling this function
 
   // 2. Fetch integration
   let integration;
@@ -83,11 +87,9 @@ export async function addAutoProvision(
   const metadataWizard = createMetadataWizard(product.metadataSchema);
   output.debug(`Metadata wizard supported: ${metadataWizard.isSupported}`);
 
-  // 4. Get resource name
-  const resourceName = await client.input.text({
-    message: 'What is the name of the resource?',
-    validate: value => (value.trim() ? true : 'Resource name is required'),
-  });
+  // 4. Generate resource name (use provided arg or auto-generate)
+  const resourceName =
+    resourceNameArg ?? generateDefaultResourceName(product.slug);
 
   // 5. Collect metadata (if supported, otherwise let server use defaults)
   const metadata = metadataWizard.isSupported
@@ -222,7 +224,9 @@ export async function addAutoProvision(
   });
   output.debug(`Selected environments: ${JSON.stringify(environments)}`);
 
-  output.spinner(`Connecting to ${chalk.bold(projectLink.project.name)}...`);
+  output.spinner(
+    `Connecting ${chalk.bold(resourceName)} to ${chalk.bold(projectLink.project.name)}...`
+  );
   output.debug(
     `Connecting resource ${result.resource.id} to project ${projectLink.project.id}`
   );

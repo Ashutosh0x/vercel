@@ -21,6 +21,8 @@ const openMock = vi.mocked(open);
 
 beforeEach(() => {
   openMock.mockClear();
+  // Mock Math.random to get predictable resource names (gray-apple suffix)
+  vi.spyOn(Math, 'random').mockReturnValue(0);
 });
 
 describe('integration', () => {
@@ -98,7 +100,7 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&projectId=vercel-integration-add&cmd=add'
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&projectId=vercel-integration-add&defaultResourceName=acme-product-gray-apple&cmd=add'
           );
         });
 
@@ -126,7 +128,7 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&cmd=add'
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&defaultResourceName=acme-product-gray-apple&cmd=add'
           );
         });
 
@@ -143,7 +145,7 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&cmd=add'
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&defaultResourceName=acme-product-gray-apple&cmd=add'
           );
         });
 
@@ -190,10 +192,6 @@ describe('integration', () => {
           );
 
           await expect(client.stderr).toOutput(
-            'What is the name of the resource?'
-          );
-          client.stdin.write('test-resource\n');
-          await expect(client.stderr).toOutput(
             'Choose your region (Use arrow keys)'
           );
           client.stdin.write('\n');
@@ -203,7 +201,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: test-resource
+- Name: acme-product-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -219,7 +217,7 @@ describe('integration', () => {
           await expect(client.stderr).toOutput('Select environments');
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
-            'test-resource successfully connected to vercel-integration-add'
+            'acme-product-gray-apple successfully connected to vercel-integration-add'
           );
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
@@ -241,10 +239,6 @@ describe('integration', () => {
           );
 
           await expect(client.stderr).toOutput(
-            'What is the name of the resource?'
-          );
-          client.stdin.write('test-resource\n');
-          await expect(client.stderr).toOutput(
             'Choose your region (Use arrow keys)'
           );
           client.stdin.write('\n');
@@ -254,7 +248,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: test-resource
+- Name: acme-product-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -280,10 +274,6 @@ describe('integration', () => {
           );
 
           await expect(client.stderr).toOutput(
-            'What is the name of the resource?'
-          );
-          client.stdin.write('test-resource\n');
-          await expect(client.stderr).toOutput(
             'Choose your region (Use arrow keys)'
           );
           client.stdin.write('\n');
@@ -293,7 +283,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: test-resource
+- Name: acme-product-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -333,7 +323,7 @@ describe('integration', () => {
           client.stdin.write('Y\n');
           await expect(exitCodePromise).resolves.toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&cmd=add'
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&defaultResourceName=acme-product-gray-apple&cmd=add'
           );
         });
 
@@ -376,10 +366,6 @@ describe('integration', () => {
             `Installing Acme Product by Acme Prepayment under ${team.slug}`
           );
           await expect(client.stderr).toOutput(
-            'What is the name of the resource?'
-          );
-          client.stdin.write('test-resource\n');
-          await expect(client.stderr).toOutput(
             'Choose your region (Use arrow keys)'
           );
           client.stdin.write('\n');
@@ -397,7 +383,7 @@ describe('integration', () => {
           client.stdin.write('Y\n');
           await expect(exitCodePromise).resolves.toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme-prepayment&productId=acme-product&source=cli&defaultResourceName=test-resource&cmd=add'
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme-prepayment&productId=acme-product&source=cli&defaultResourceName=acme-product-gray-apple&cmd=add'
           );
         });
       });
@@ -415,10 +401,6 @@ describe('integration', () => {
           );
 
           await expect(client.stderr).toOutput(
-            'What is the name of the resource?'
-          );
-          client.stdin.write('test-resource\n');
-          await expect(client.stderr).toOutput(
             'Choose your region (Use arrow keys)'
           );
           client.stdin.write('\n');
@@ -428,7 +410,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: test-resource
+- Name: acme-product-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -454,10 +436,6 @@ describe('integration', () => {
           );
 
           await expect(client.stderr).toOutput(
-            'What is the name of the resource?'
-          );
-          client.stdin.write('test-resource\n');
-          await expect(client.stderr).toOutput(
             'Choose your region (Use arrow keys)'
           );
           client.stdin.write('\n');
@@ -467,7 +445,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: test-resource
+- Name: acme-product-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -498,10 +476,6 @@ describe('integration', () => {
           );
 
           await expect(client.stderr).toOutput(
-            'What is the name of the resource?'
-          );
-          client.stdin.write('test-resource\n');
-          await expect(client.stderr).toOutput(
             'Choose your region (Use arrow keys)'
           );
           client.stdin.write('\n');
@@ -511,7 +485,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: test-resource
+- Name: acme-product-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -540,10 +514,6 @@ describe('integration', () => {
           );
 
           await expect(client.stderr).toOutput(
-            'What is the name of the resource?'
-          );
-          client.stdin.write('test-resource\n');
-          await expect(client.stderr).toOutput(
             'Choose your region (Use arrow keys)'
           );
           client.stdin.write('\n');
@@ -553,7 +523,7 @@ describe('integration', () => {
           client.stdin.write('\n');
           await expect(client.stderr).toOutput(
             `Selected product:
-- Name: test-resource
+- Name: acme-product-gray-apple
 - Primary Region: us-west-1
 - Plan: Pro Plan
 ? Confirm selection? (Y/n)`
@@ -573,6 +543,89 @@ describe('integration', () => {
           expect(openMock).toHaveBeenCalledWith(
             'https://vercel.com/api/marketplace/cli?teamId=team_dummy&authorizationId=failure-case&source=cli&cmd=authorize'
           );
+        });
+      });
+
+      describe('--name flag', () => {
+        beforeEach(() => {
+          useIntegration({ withInstallation: true, ownerId: team.id });
+          usePreauthorization();
+        });
+
+        it('should use provided resource name from --name flag', async () => {
+          client.setArgv(
+            'integration',
+            'add',
+            'acme',
+            '--name',
+            'my-custom-name'
+          );
+          const exitCodePromise = integrationCommand(client);
+          await expect(client.stderr).toOutput(
+            `Installing Acme Product by Acme Integration under ${team.slug}`
+          );
+
+          await expect(client.stderr).toOutput(
+            'Choose your region (Use arrow keys)'
+          );
+          client.stdin.write('\n');
+          await expect(client.stderr).toOutput(
+            'Choose a billing plan (Use arrow keys)'
+          );
+          client.stdin.write('\n');
+          await expect(client.stderr).toOutput(
+            `Selected product:
+- Name: my-custom-name
+- Primary Region: us-west-1
+- Plan: Pro Plan
+? Confirm selection? (Y/n)`
+          );
+          client.stdin.write('y\n');
+
+          await expect(client.stderr).toOutput('Validating payment...');
+          await expect(client.stderr).toOutput('Validation complete.');
+          await expect(client.stderr).toOutput(
+            'Acme Product successfully provisioned'
+          );
+          const exitCode = await exitCodePromise;
+          expect(exitCode).toEqual(0);
+        });
+
+        it('should reject invalid resource name from --name flag', async () => {
+          client.setArgv(
+            'integration',
+            'add',
+            'acme',
+            '--name',
+            'Invalid_Name'
+          );
+          const exitCode = await integrationCommand(client);
+
+          await expect(client.stderr).toOutput(
+            'Error: Resource name can only contain lowercase letters, numbers, and hyphens'
+          );
+          expect(exitCode).toEqual(1);
+        });
+
+        it('should reject empty resource name from --name flag', async () => {
+          client.setArgv('integration', 'add', 'acme', '--name', '   ');
+          const exitCode = await integrationCommand(client);
+
+          await expect(client.stderr).toOutput(
+            'Error: Resource name cannot be empty'
+          );
+          expect(exitCode).toEqual(1);
+        });
+
+        it('should reject resource name exceeding 64 characters', async () => {
+          const longName = 'a'.repeat(65);
+          client.setArgv('integration', 'add', 'acme', '--name', longName);
+          const exitCode = await integrationCommand(client);
+
+          await expect(client.stderr).toOutput(
+            'Error: Resource name cannot exceed 64 characters'
+          );
+          expect(exitCode).toEqual(1);
         });
       });
 
