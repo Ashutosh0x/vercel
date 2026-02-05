@@ -47,7 +47,7 @@ export async function* continueDeployment(options: {
   }
 
   const { fileList } = await buildFileTree(
-    outputDir,
+    options.path,
     { isDirectory: true, prebuilt: true, vercelOutputDir: outputDir },
     debug
   );
