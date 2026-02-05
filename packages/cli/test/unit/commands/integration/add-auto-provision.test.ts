@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import open from 'open';
 import integrationCommand from '../../../../src/commands/integration';
 import { setupUnitFixture } from '../../../helpers/setup-unit-fixture';
@@ -22,6 +22,10 @@ beforeEach(() => {
   process.env.FF_AUTO_PROVISION_INSTALL = '1';
   // Mock Math.random to get predictable resource names (gray-apple suffix)
   vi.spyOn(Math, 'random').mockReturnValue(0);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('integration add (auto-provision)', () => {
@@ -51,7 +55,7 @@ describe('integration add (auto-provision)', () => {
       client.stdin.write('\n');
 
       await expect(client.stderr).toOutput(
-        'Acme Product successfully provisioned'
+        'Acme Product successfully provisioned: acme-gray-apple'
       );
 
       const exitCode = await exitCodePromise;
@@ -78,7 +82,7 @@ describe('integration add (auto-provision)', () => {
       client.stdin.write('\n');
 
       await expect(client.stderr).toOutput(
-        'Acme Product successfully provisioned'
+        'Acme Product successfully provisioned: acme-gray-apple'
       );
 
       await expect(client.stderr).toOutput(
@@ -113,7 +117,7 @@ describe('integration add (auto-provision)', () => {
       client.stdin.write('\n');
 
       await expect(client.stderr).toOutput(
-        'Acme Product successfully provisioned'
+        'Acme Product successfully provisioned: acme-gray-apple'
       );
 
       await expect(client.stderr).toOutput(
@@ -133,7 +137,7 @@ describe('integration add (auto-provision)', () => {
       client.stdin.write('\n');
 
       await expect(client.stderr).toOutput(
-        'Acme Product successfully provisioned'
+        'Acme Product successfully provisioned: acme-gray-apple'
       );
 
       await exitCodePromise;
@@ -144,7 +148,7 @@ describe('integration add (auto-provision)', () => {
           value: 'add',
         },
         {
-          key: 'argument:name',
+          key: 'argument:integration',
           value: 'acme',
         },
       ]);
@@ -174,7 +178,7 @@ describe('integration add (auto-provision)', () => {
       client.stdin.write('y\n');
 
       await expect(client.stderr).toOutput(
-        'Acme Product successfully provisioned'
+        'Acme Product successfully provisioned: acme-gray-apple'
       );
 
       const exitCode = await exitCodePromise;
@@ -459,7 +463,7 @@ describe('integration add (auto-provision)', () => {
       client.stdin.write('\n');
 
       await expect(client.stderr).toOutput(
-        'Acme Product successfully provisioned'
+        'Acme Product successfully provisioned: my-custom-name'
       );
 
       const exitCode = await exitCodePromise;
@@ -467,11 +471,17 @@ describe('integration add (auto-provision)', () => {
     });
 
     it('should reject invalid resource name from --name flag', async () => {
-      client.setArgv('integration', 'add', 'acme', '--name', 'Invalid_Name');
+      client.setArgv(
+        'integration',
+        'add',
+        'acme',
+        '--name',
+        'Invalid.Name@123'
+      );
       const exitCode = await integrationCommand(client);
 
       await expect(client.stderr).toOutput(
-        'Error: Resource name can only contain lowercase letters, numbers, and hyphens'
+        'Error: Resource name can only contain letters, numbers, underscores, spaces, and hyphens'
       );
       expect(exitCode).toEqual(1);
     });
@@ -486,13 +496,13 @@ describe('integration add (auto-provision)', () => {
       expect(exitCode).toEqual(1);
     });
 
-    it('should reject resource name exceeding 64 characters', async () => {
-      const longName = 'a'.repeat(65);
+    it('should reject resource name exceeding 128 characters', async () => {
+      const longName = 'a'.repeat(129);
       client.setArgv('integration', 'add', 'acme', '--name', longName);
       const exitCode = await integrationCommand(client);
 
       await expect(client.stderr).toOutput(
-        'Error: Resource name cannot exceed 64 characters'
+        'Error: Resource name cannot exceed 128 characters'
       );
       expect(exitCode).toEqual(1);
     });
@@ -505,15 +515,15 @@ describe('integration add (auto-provision)', () => {
       client.stdin.write('\n');
 
       await expect(client.stderr).toOutput(
-        'Acme Product successfully provisioned'
+        'Acme Product successfully provisioned: shorthand-name'
       );
 
       const exitCode = await exitCodePromise;
       expect(exitCode).toEqual(0);
     });
 
-    it('should accept exactly 64 character resource name', async () => {
-      const maxName = 'a'.repeat(64);
+    it('should accept exactly 128 character resource name', async () => {
+      const maxName = 'a'.repeat(128);
       client.setArgv('integration', 'add', 'acme', '--name', maxName);
       const exitCodePromise = integrationCommand(client);
 
@@ -521,11 +531,38 @@ describe('integration add (auto-provision)', () => {
       client.stdin.write('\n');
 
       await expect(client.stderr).toOutput(
-        'Acme Product successfully provisioned'
+        `Acme Product successfully provisioned: ${maxName}`
       );
 
       const exitCode = await exitCodePromise;
       expect(exitCode).toEqual(0);
+    });
+
+    it('should reject --name that violates aws-apg product-specific rules (must start with letter)', async () => {
+      client.setArgv(
+        'integration',
+        'add',
+        'aws-apg',
+        '--name',
+        '1starts-with-number'
+      );
+      const exitCode = await integrationCommand(client);
+
+      await expect(client.stderr).toOutput(
+        'Error: Resource name must start with a letter and can only contain letters, numbers, and hyphens'
+      );
+      expect(exitCode).toEqual(1);
+    });
+
+    it('should reject --name exceeding aws-apg 50-char limit', async () => {
+      const longName = 'a'.repeat(51);
+      client.setArgv('integration', 'add', 'aws-apg', '--name', longName);
+      const exitCode = await integrationCommand(client);
+
+      await expect(client.stderr).toOutput(
+        'Error: Resource name cannot exceed 50 characters'
+      );
+      expect(exitCode).toEqual(1);
     });
   });
 

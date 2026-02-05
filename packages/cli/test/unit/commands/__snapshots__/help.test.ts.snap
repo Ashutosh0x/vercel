@@ -2718,7 +2718,7 @@ exports[`help command > integration help output snapshots > integration help col
 
   Commands:
 
-  add     name         Installs 
+  add     integration  Installs 
                        a        
                        marketpl…
                        integrat…
@@ -2786,7 +2786,7 @@ exports[`help command > integration help output snapshots > integration help col
 
   Commands:
 
-  add     name         Installs a marketplace integration               
+  add     integration  Installs a marketplace integration               
   list    [project]    Lists all resources from marketplace integrations
   open    name         Opens a marketplace integration's dashboard      
   remove  integration  Uninstalls a marketplace integration             
@@ -2817,7 +2817,7 @@ exports[`help command > integration help output snapshots > integration help col
 
   Commands:
 
-  add     name         Installs a marketplace integration                                                       
+  add     integration  Installs a marketplace integration                                                       
   list    [project]    Lists all resources from marketplace integrations                                        
   open    name         Opens a marketplace integration's dashboard                                              
   remove  integration  Uninstalls a marketplace integration                                                     

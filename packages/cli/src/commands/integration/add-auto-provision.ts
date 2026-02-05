@@ -11,7 +11,7 @@ import type {
   IntegrationProduct,
 } from '../../util/integration/types';
 import { connectResourceToProject } from '../../util/integration-resource/connect-resource-to-project';
-import { generateDefaultResourceName } from '../../util/integration/generate-resource-name';
+import { resolveResourceName } from '../../util/integration/generate-resource-name';
 import cmd from '../../util/output/cmd';
 import indent from '../../util/output/indent';
 import { packageName } from '../../util/pkg-name';
@@ -37,7 +37,7 @@ export async function addAutoProvision(
     return 1;
   }
 
-  // Note: resourceNameArg validation already done in add.ts before calling this function
+  telemetry.trackCliOptionName(resourceNameArg);
 
   // 2. Fetch integration
   let integration;
@@ -51,7 +51,10 @@ export async function addAutoProvision(
     );
     return 1;
   } finally {
-    telemetry.trackCliArgumentName(integrationSlug, knownIntegrationSlug);
+    telemetry.trackCliArgumentIntegration(
+      integrationSlug,
+      knownIntegrationSlug
+    );
   }
 
   if (!integration.products?.length) {
@@ -87,9 +90,13 @@ export async function addAutoProvision(
   const metadataWizard = createMetadataWizard(product.metadataSchema);
   output.debug(`Metadata wizard supported: ${metadataWizard.isSupported}`);
 
-  // 4. Generate resource name (use provided arg or auto-generate)
-  const resourceName =
-    resourceNameArg ?? generateDefaultResourceName(product.slug);
+  // 4. Resolve and validate resource name
+  const nameResult = resolveResourceName(product.slug, resourceNameArg);
+  if ('error' in nameResult) {
+    output.error(nameResult.error);
+    return 1;
+  }
+  const { resourceName } = nameResult;
 
   // 5. Collect metadata (if supported, otherwise let server use defaults)
   const metadata = metadataWizard.isSupported
@@ -201,7 +208,9 @@ export async function addAutoProvision(
   );
   output.debug(`Installation: ${JSON.stringify(result.installation, null, 2)}`);
   output.debug(`Billing plan: ${JSON.stringify(result.billingPlan, null, 2)}`);
-  output.success(`${product.name} successfully provisioned`);
+  output.success(
+    `${product.name} successfully provisioned: ${chalk.bold(resourceName)}`
+  );
 
   // 10. Link to project (prompt)
   const projectLink = await getOptionalLinkedProject(client);

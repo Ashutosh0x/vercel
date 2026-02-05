@@ -7,14 +7,15 @@ export const addSubcommand = {
   description: 'Installs a marketplace integration',
   arguments: [
     {
-      name: 'name',
+      name: 'integration',
       required: true,
     },
   ],
   options: [
     {
       name: 'name',
-      description: 'Custom name for the resource (auto-generated if not provided)',
+      description:
+        'Custom name for the resource (auto-generated if not provided)',
       shorthand: 'n',
       type: String,
       deprecated: false,
@@ -155,7 +156,7 @@ export const removeSubcommand = {
     {
       name: 'Uninstall an integration',
       value: [
-        `${packageName} integration remove <inegration>`,
+        `${packageName} integration remove <integration>`,
         `${packageName} integration remove acme`,
       ],
     },

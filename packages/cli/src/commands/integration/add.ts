@@ -17,10 +17,7 @@ import type {
 } from '../../util/integration/types';
 import { createMetadataWizard, type MetadataWizard } from './wizard';
 import { provisionStoreResource } from '../../util/integration/provision-store-resource';
-import {
-  generateDefaultResourceName,
-  validateResourceName,
-} from '../../util/integration/generate-resource-name';
+import { resolveResourceName } from '../../util/integration/generate-resource-name';
 import { addAutoProvision } from './add-auto-provision';
 import { connectResourceToProject } from '../../util/integration-resource/connect-resource-to-project';
 import { fetchBillingPlans } from '../../util/integration/fetch-billing-plans';
@@ -42,6 +39,7 @@ export async function add(
       store: client.telemetryEventStore,
     },
   });
+  telemetry.trackCliOptionName(resourceNameArg);
 
   if (args.length > 1) {
     output.error('Cannot install more than one integration at a time');
@@ -55,14 +53,8 @@ export async function add(
     return 1;
   }
 
-  // Validate user-provided resource name if given
-  if (resourceNameArg) {
-    const validationError = validateResourceName(resourceNameArg);
-    if (validationError) {
-      output.error(validationError);
-      return 1;
-    }
-  }
+  // Note: Resource name validation happens after product selection
+  // to apply product-specific validation rules
 
   // Auto-provision: completely separate code path
   if (process.env.FF_AUTO_PROVISION_INSTALL === '1') {
@@ -87,7 +79,10 @@ export async function add(
     );
     return 1;
   } finally {
-    telemetry.trackCliArgumentName(integrationSlug, knownIntegrationSlug);
+    telemetry.trackCliArgumentIntegration(
+      integrationSlug,
+      knownIntegrationSlug
+    );
   }
 
   if (!integration.products) {
@@ -140,9 +135,13 @@ export async function add(
   const metadataSchema = product.metadataSchema;
   const metadataWizard = createMetadataWizard(metadataSchema);
 
-  // Generate resource name (use provided arg or auto-generate)
-  const resourceName =
-    resourceNameArg ?? generateDefaultResourceName(product.slug);
+  // Resolve and validate resource name
+  const nameResult = resolveResourceName(product.slug, resourceNameArg);
+  if ('error' in nameResult) {
+    output.error(nameResult.error);
+    return 1;
+  }
+  const { resourceName } = nameResult;
 
   // The provisioning via cli is possible when
   // 1. The integration was installed once (terms have been accepted)
@@ -232,6 +231,7 @@ function provisionResourceViaWebUI(
   }
   url.searchParams.set('cmd', 'add');
   output.print('Opening the Vercel Dashboard to continue the installation...');
+  output.debug(`Opening URL: ${url.href}`);
   open(url.href);
 }
 
@@ -534,6 +534,7 @@ function handleManualVerificationAction(
   url.searchParams.set('source', 'cli');
   url.searchParams.set('cmd', 'authorize');
   output.print('Opening the Vercel Dashboard to continue the installation...');
+  output.debug(`Opening URL: ${url.href}`);
   open(url.href);
 }
 
@@ -567,7 +568,7 @@ async function provisionStorageProduct(
   } finally {
     output.stopSpinner();
   }
-  output.log(`${product.name} successfully provisioned`);
+  output.log(`${product.name} successfully provisioned: ${chalk.bold(name)}`);
 
   const projectLink = await getOptionalLinkedProject(client);
 
