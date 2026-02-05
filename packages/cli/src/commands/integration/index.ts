@@ -77,19 +77,18 @@ export default async function main(client: Client) {
       }
       telemetry.trackCliSubcommandAdd(subcommandOriginal);
 
-      // Parse add-specific flags
-      // argv structure: ['vercel', 'integration', 'add', ...addArgs]
+      // Parse add-specific flags from subArgs (which contains everything after 'add')
       const addFlagsSpec = getFlagsSpecification(addSubcommand.options);
       let addParsedArgs;
       try {
-        addParsedArgs = parseArguments(client.argv.slice(3), addFlagsSpec);
+        addParsedArgs = parseArguments(subArgs, addFlagsSpec);
       } catch (error) {
         printError(error);
         return 1;
       }
       const resourceName = addParsedArgs.flags['--name'] as string | undefined;
 
-      // Pass only positional args (integration slug), not the raw subArgs which includes flags
+      // Pass only positional args (integration slug), not flags
       return add(client, addParsedArgs.args, resourceName);
     }
     case 'list': {
