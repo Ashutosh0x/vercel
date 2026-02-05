@@ -119,6 +119,19 @@ export class DeployTelemetryClient
       this.trackCliFlag('prebuilt');
     }
   }
+  trackCliFlagManual(flag: boolean | undefined) {
+    if (flag) {
+      this.trackCliFlag('manual');
+    }
+  }
+  trackCliOptionContinue(value: string | undefined) {
+    if (value) {
+      this.trackCliOption({
+        option: 'continue',
+        value: this.redactedValue,
+      });
+    }
+  }
   trackCliFlagProd(flag: boolean | undefined) {
     if (flag) {
       this.trackCliFlag('prod');

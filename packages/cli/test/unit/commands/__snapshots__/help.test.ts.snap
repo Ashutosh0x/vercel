@@ -737,6 +737,9 @@ exports[`help command > deploy help output snapshots > deploy help column width 
                                 KEY1=va…
                                 -b      
                                 KEY2=va…
+       --continue <URL>         Continue
+                                a manual
+                                deploym…
   -e,  --env <KEY=VALUE>        Specify 
                                 environ…
                                 variabl…
@@ -765,6 +768,9 @@ exports[`help command > deploy help output snapshots > deploy help column width 
                                 the     
                                 build   
                                 logs    
+       --manual                 Create a
+                                manual  
+                                deploym…
   -m,  --meta <KEY=VALUE>       Specify 
                                 metadata
                                 for the 
@@ -925,6 +931,7 @@ exports[`help command > deploy help output snapshots > deploy help column width 
                                 before uploading it                             
   -b,  --build-env <KEY=VALUE>  Specify environment variables during build-time 
                                 (e.g. \`-b KEY1=value1 -b KEY2=value2\`)          
+       --continue <URL>         Continue a manual deployment                    
   -e,  --env <KEY=VALUE>        Specify environment variables during run-time   
                                 (e.g. \`-e KEY1=value1 -e KEY2=value2\`)          
   -f,  --force                  Force a new deployment even if nothing has      
@@ -932,6 +939,7 @@ exports[`help command > deploy help output snapshots > deploy help column width 
        --guidance               Receive command suggestions once deployment is  
                                 complete                                        
   -l,  --logs                   Print the build logs                            
+       --manual                 Create a manual deployment                      
   -m,  --meta <KEY=VALUE>       Specify metadata for the deployment (e.g. \`-m   
                                 KEY1=value1 -m KEY2=value2\`)                    
        --no-wait                Don't wait for the deployment to finish         
@@ -1001,10 +1009,12 @@ exports[`help command > deploy help output snapshots > deploy help column width 
 
        --archive <FORMAT>       Compress the deployment code into an archive before uploading it                        
   -b,  --build-env <KEY=VALUE>  Specify environment variables during build-time (e.g. \`-b KEY1=value1 -b KEY2=value2\`)  
+       --continue <URL>         Continue a manual deployment                                                            
   -e,  --env <KEY=VALUE>        Specify environment variables during run-time (e.g. \`-e KEY1=value1 -e KEY2=value2\`)    
   -f,  --force                  Force a new deployment even if nothing has changed                                      
        --guidance               Receive command suggestions once deployment is complete                                 
   -l,  --logs                   Print the build logs                                                                    
+       --manual                 Create a manual deployment                                                              
   -m,  --meta <KEY=VALUE>       Specify metadata for the deployment (e.g. \`-m KEY1=value1 -m KEY2=value2\`)              
        --no-wait                Don't wait for the deployment to finish                                                 
        --prebuilt               Use in combination with \`vc build\`. Deploy an existing build                            

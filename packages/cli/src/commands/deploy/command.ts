@@ -76,6 +76,21 @@ export const deployCommand = {
         'Use in combination with `vc build`. Deploy an existing build',
     },
     {
+      name: 'manual',
+      shorthand: null,
+      type: Boolean,
+      deprecated: false,
+      description: 'Create a manual deployment',
+    },
+    {
+      name: 'continue',
+      shorthand: null,
+      type: String,
+      argument: 'URL',
+      deprecated: false,
+      description: 'Continue a manual deployment',
+    },
+    {
       name: 'prod',
       shorthand: null,
       type: Boolean,

@@ -53,6 +53,7 @@ export interface CreateOptions {
   noWait?: boolean;
   withFullLogs?: boolean;
   autoAssignCustomDomains?: boolean;
+  manual?: boolean;
 }
 
 export interface RemoveOptions {
@@ -128,6 +129,7 @@ export default class Now {
       noWait,
       withFullLogs,
       autoAssignCustomDomains,
+      manual,
     }: CreateOptions,
     org: Org,
     isSettingUpProject: boolean,
@@ -177,6 +179,7 @@ export default class Now {
       noWait,
       withFullLogs,
       bulkRedirectsPath: nowConfig.bulkRedirectsPath,
+      manual,
     });
 
     if (deployment && deployment.warnings) {

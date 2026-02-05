@@ -4,9 +4,10 @@ import {
   scanParentDirs,
 } from '@vercel/build-utils';
 import {
-  type Dictionary,
   fileNameSymbol,
+  continueDeployment,
   VALID_ARCHIVE_FORMATS,
+  type Dictionary,
   type VercelConfig,
 } from '@vercel/client';
 import { errorToString, isError } from '@vercel/error-utils';
@@ -24,6 +25,7 @@ import createDeploy from '../../util/deploy/create-deploy';
 import { getDeploymentChecks } from '../../util/deploy/get-deployment-checks';
 import getPrebuiltJson from '../../util/deploy/get-prebuilt-json';
 import { printDeploymentStatus } from '../../util/deploy/print-deployment-status';
+import { resolveDeploymentId } from '../../util/deploy/resolve-deployment-id';
 import { isValidArchive } from '../../util/deploy/validate-archive-format';
 import purchaseDomainIfAvailable from '../../util/domains/purchase-domain-if-available';
 import { emoji, prependEmoji } from '../../util/emoji';
@@ -112,6 +114,8 @@ export default async (client: Client): Promise<number> => {
     telemetryClient.trackCliFlagWithCache(
       parsedArguments.flags['--with-cache']
     );
+    telemetryClient.trackCliFlagManual(parsedArguments.flags['--manual']);
+    telemetryClient.trackCliOptionContinue(parsedArguments.flags['--continue']);
 
     if ('--confirm' in parsedArguments.flags) {
       telemetryClient.trackCliFlagConfirm(parsedArguments.flags['--confirm']);
@@ -137,6 +141,25 @@ export default async (client: Client): Promise<number> => {
     parsedArguments.args.shift();
   }
   // #endregion
+
+  // # Validate incompatible flags with --manual
+  if (
+    parsedArguments.flags['--manual'] &&
+    parsedArguments.flags['--continue']
+  ) {
+    output.error(
+      `Cannot use ${param('--manual')} and ${param('--continue')} together`
+    );
+    return 1;
+  }
+
+  if (
+    parsedArguments.flags['--manual'] &&
+    !parsedArguments.flags['--prebuilt']
+  ) {
+    output.error(`${param('--manual')} requires ${param('--prebuilt')}`);
+    return 1;
+  }
 
   // #region Path validation
   let paths;
@@ -478,7 +501,8 @@ export default async (client: Client): Promise<number> => {
   });
   const deployStamp = stamp();
   let deployment = null;
-  const noWait = !!parsedArguments.flags['--no-wait'];
+  const noWait =
+    !!parsedArguments.flags['--no-wait'] || !!parsedArguments.flags['--manual'];
   const withFullLogs = parsedArguments.flags['--logs'] ? true : false;
 
   const localConfigurationOverrides = pickOverrides(localConfig);
@@ -488,6 +512,19 @@ export default async (client: Client): Promise<number> => {
     throw new Error(
       '`name` not found on project or provided by existing project'
     );
+  }
+
+  if (parsedArguments.flags['--continue']) {
+    return handleContinueDeployment({
+      client,
+      contextName,
+      continueFlag: parsedArguments.flags['--continue'],
+      cwd,
+      deployStamp,
+      noWait,
+      org,
+      vercelOutputDir,
+    });
   }
 
   try {
@@ -524,6 +561,7 @@ export default async (client: Client): Promise<number> => {
       noWait,
       withFullLogs,
       autoAssignCustomDomains,
+      manual: parsedArguments.flags['--manual'],
     };
 
     if (!localConfig.builds || localConfig.builds.length === 0) {
@@ -847,3 +885,167 @@ const addProcessEnv = async (
     }
   }
 };
+
+async function handleContinueDeployment({
+  client,
+  contextName,
+  continueFlag,
+  cwd,
+  deployStamp,
+  noWait,
+  org,
+  vercelOutputDir,
+}: {
+  client: Client;
+  contextName: string;
+  continueFlag: string;
+  cwd: string;
+  deployStamp: () => string;
+  noWait: boolean;
+  org: { type: string; id: string; slug: string };
+  vercelOutputDir: string | undefined;
+}): Promise<number> {
+  const { debug, error } = output;
+
+  output.spinner('Resolving deployment...', 0);
+  let deploymentId: string;
+  try {
+    deploymentId = await resolveDeploymentId(client, contextName, continueFlag);
+  } catch (err) {
+    output.stopSpinner();
+    if (isError(err)) {
+      error(err.message);
+    } else {
+      error('Failed to resolve deployment');
+    }
+    return 1;
+  }
+  output.stopSpinner();
+  debug(`Continuing deployment: ${deploymentId}`);
+
+  if (!vercelOutputDir) {
+    error('Could not determine vercel output directory');
+    return 1;
+  }
+
+  const token = client.authConfig.token;
+  if (!token) {
+    error('Missing authentication token');
+    return 1;
+  }
+
+  output.spinner(`Continuing deployment...`, 0);
+
+  try {
+    let finalDeployment: any = null;
+
+    for await (const event of continueDeployment({
+      apiUrl: client.apiUrl,
+      debug: output.isDebugEnabled(),
+      deploymentId,
+      path: cwd,
+      teamId: org.type === 'team' ? org.id : undefined,
+      token,
+      vercelOutputDir,
+    })) {
+      debug(`Event: ${event.type}`);
+
+      if (event.type === 'hashes-calculated') {
+        const hashCount = Object.keys(event.payload).length;
+        debug(`Calculated ${hashCount} hashes`);
+      }
+
+      if (event.type === 'file-count') {
+        const { total, missing } = event.payload;
+        output.spinner(
+          `Uploading ${missing.length} of ${total.size} files...`,
+          0
+        );
+      }
+
+      if (event.type === 'file-uploaded') {
+        debug(`Uploaded: ${event.payload.file.names.join(' ')}`);
+      }
+
+      if (event.type === 'all-files-uploaded') {
+        output.spinner('Finalizing...', 0);
+      }
+
+      if (event.type === 'created') {
+        finalDeployment = event.payload;
+        output.stopSpinner();
+
+        const previewUrl = `https://${finalDeployment.url}`;
+        output.print(
+          prependEmoji(
+            `Preview: ${chalk.bold(previewUrl)} ${deployStamp()}`,
+            emoji('success')
+          ) + '\n'
+        );
+
+        if (noWait) {
+          return printDeploymentStatus(
+            finalDeployment,
+            deployStamp,
+            noWait,
+            false
+          );
+        }
+
+        output.spinner('Building...', 0);
+      }
+
+      if (event.type === 'building') {
+        output.spinner('Building...', 0);
+      }
+
+      if (event.type === 'ready') {
+        finalDeployment = event.payload;
+        output.stopSpinner();
+      }
+
+      if (event.type === 'alias-assigned') {
+        finalDeployment = event.payload;
+        output.stopSpinner();
+
+        if (
+          finalDeployment.target === 'production' &&
+          finalDeployment.alias &&
+          finalDeployment.alias.length > 0
+        ) {
+          const primaryDomain = finalDeployment.alias[0];
+          const prodUrl = `https://${primaryDomain}`;
+          output.print(
+            prependEmoji(
+              `Production: ${chalk.bold(prodUrl)} ${deployStamp()}`,
+              emoji('link')
+            ) + '\n'
+          );
+        }
+      }
+
+      if (event.type === 'error') {
+        output.stopSpinner();
+        const payload = event.payload;
+        error(payload.message || 'An error occurred during deployment');
+        return 1;
+      }
+    }
+
+    if (!finalDeployment) {
+      error('Deployment failed: no deployment returned');
+      return 1;
+    }
+
+    return printDeploymentStatus(finalDeployment, deployStamp, noWait, false);
+  } catch (err: unknown) {
+    output.stopSpinner();
+    if (isError(err)) {
+      debug(`Error: ${err}\n${err.stack}`);
+      error(err.message);
+    } else {
+      error('An unexpected error occurred');
+    }
+    return 1;
+  }
+}
