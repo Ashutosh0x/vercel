@@ -161,6 +161,14 @@ export default async (client: Client): Promise<number> => {
     return 1;
   }
 
+  if (
+    parsedArguments.flags['--continue'] &&
+    !parsedArguments.flags['--prebuilt']
+  ) {
+    output.error(`${param('--continue')} requires ${param('--prebuilt')}`);
+    return 1;
+  }
+
   // #region Path validation
   let paths;
   if (parsedArguments.args.length > 0) {
