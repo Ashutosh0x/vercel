@@ -191,7 +191,7 @@ async function postContinue(options: {
       body: JSON.stringify({
         files: prepareFiles(options.files, {
           isDirectory: true,
-          path: options.outputDir,
+          path: options.path,
           token: options.token,
         }),
       }),
