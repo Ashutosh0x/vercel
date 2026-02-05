@@ -100,11 +100,7 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-<<<<<<< HEAD
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&projectId=vercel-integration-add&defaultResourceName=acme-product-gray-apple&cmd=add'
-=======
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&projectSlug=vercel-integration-add&defaultResourceName=acme-gray-apple&source=cli&cmd=add'
->>>>>>> 42bb4d56e (fix(cli): fix args parsing for integration add command)
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&projectId=vercel-integration-add&defaultResourceName=acme-gray-apple&cmd=add'
           );
         });
 
@@ -132,11 +128,7 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-<<<<<<< HEAD
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&defaultResourceName=acme-product-gray-apple&cmd=add'
-=======
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&defaultResourceName=acme-gray-apple&source=cli&cmd=add'
->>>>>>> 42bb4d56e (fix(cli): fix args parsing for integration add command)
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&defaultResourceName=acme-gray-apple&cmd=add'
           );
         });
 
@@ -153,11 +145,7 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-<<<<<<< HEAD
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&defaultResourceName=acme-product-gray-apple&cmd=add'
-=======
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&defaultResourceName=acme-gray-apple&source=cli&cmd=add'
->>>>>>> 42bb4d56e (fix(cli): fix args parsing for integration add command)
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&defaultResourceName=acme-gray-apple&cmd=add'
           );
         });
 
@@ -201,7 +189,7 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&defaultResourceName=my-custom-db&source=cli&cmd=add'
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&defaultResourceName=my-custom-db&cmd=add'
           );
         });
 
@@ -229,7 +217,7 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&projectSlug=vercel-integration-add&defaultResourceName=my-proj-db&source=cli&cmd=add'
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&projectSlug=vercel-integration-add&defaultResourceName=my-proj-db&cmd=add'
           );
         });
 
@@ -263,7 +251,7 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&defaultResourceName=my-nolink-db&source=cli&cmd=add'
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&defaultResourceName=my-nolink-db&cmd=add'
           );
         });
       });
@@ -420,11 +408,7 @@ describe('integration', () => {
           client.stdin.write('Y\n');
           await expect(exitCodePromise).resolves.toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-<<<<<<< HEAD
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&defaultResourceName=acme-product-gray-apple&cmd=add'
-=======
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&defaultResourceName=acme-gray-apple&source=cli&cmd=add'
->>>>>>> 42bb4d56e (fix(cli): fix args parsing for integration add command)
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&source=cli&defaultResourceName=acme-gray-apple&cmd=add'
           );
         });
 
@@ -484,11 +468,7 @@ describe('integration', () => {
           client.stdin.write('Y\n');
           await expect(exitCodePromise).resolves.toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-<<<<<<< HEAD
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme-prepayment&productId=acme-product&source=cli&defaultResourceName=acme-product-gray-apple&cmd=add'
-=======
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme-prepayment&productId=acme-product&defaultResourceName=acme-gray-apple&source=cli&cmd=add'
->>>>>>> 42bb4d56e (fix(cli): fix args parsing for integration add command)
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme-prepayment&productId=acme-product&source=cli&defaultResourceName=acme-gray-apple&cmd=add'
           );
         });
       });
