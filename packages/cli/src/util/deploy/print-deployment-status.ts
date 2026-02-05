@@ -35,7 +35,8 @@ export async function printDeploymentStatus(
   },
   deployStamp: () => string,
   noWait: boolean,
-  guidanceMode: boolean
+  guidanceMode: boolean,
+  manual?: boolean
 ): Promise<number> {
   indications = indications || [];
 
@@ -43,12 +44,10 @@ export async function printDeploymentStatus(
   if (noWait) {
     if (isDeploying(readyState)) {
       isStillBuilding = true;
-      output.print(
-        prependEmoji(
-          'Note: Deployment is still processing...',
-          emoji('notice')
-        ) + '\n'
-      );
+      const message = manual
+        ? `Deployment is awaiting continuation. Run ${getCommandName(`deploy --continue ${url} --prebuilt`)} to finalize.`
+        : 'Note: Deployment is still processing...';
+      output.print(prependEmoji(message, emoji('notice')) + '\n');
     }
   }
 

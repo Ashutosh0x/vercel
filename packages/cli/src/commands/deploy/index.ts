@@ -767,7 +767,13 @@ export default async (client: Client): Promise<number> => {
 
   const { isAgent } = await determineAgent();
   const guidanceMode = parsedArguments.flags['--guidance'] ?? isAgent;
-  return printDeploymentStatus(deployment, deployStamp, noWait, guidanceMode);
+  return printDeploymentStatus(
+    deployment,
+    deployStamp,
+    noWait,
+    guidanceMode,
+    parsedArguments.flags['--manual']
+  );
 };
 
 function handleCreateDeployError(error: Error, localConfig: VercelConfig) {
