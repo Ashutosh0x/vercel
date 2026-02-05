@@ -181,6 +181,91 @@ describe('integration', () => {
             },
           ]);
         });
+
+        it('should include custom --name in URL when fallback to browser without project', async () => {
+          client.setArgv(
+            'integration',
+            'add',
+            'acme',
+            '--name',
+            'my-custom-db'
+          );
+          const exitCodePromise = integrationCommand(client);
+          await expect(client.stderr).toOutput(
+            `Installing Acme Product by Acme Integration under ${team.slug}`
+          );
+          await expect(client.stderr).toOutput(
+            'Terms have not been accepted. Open Vercel Dashboard? (Y/n)'
+          );
+          client.stdin.write('y\n');
+          const exitCode = await exitCodePromise;
+          expect(exitCode, 'exit code for "integration"').toEqual(0);
+          expect(openMock).toHaveBeenCalledWith(
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&defaultResourceName=my-custom-db&source=cli&cmd=add'
+          );
+        });
+
+        it('should include custom --name and projectSlug in URL when user accepts project link', async () => {
+          useProject({
+            ...defaultProject,
+            id: 'vercel-integration-add',
+            name: 'vercel-integration-add',
+          });
+          const cwd = setupUnitFixture('vercel-integration-add');
+          client.cwd = cwd;
+          client.setArgv('integration', 'add', 'acme', '--name', 'my-proj-db');
+          const exitCodePromise = integrationCommand(client);
+          await expect(client.stderr).toOutput(
+            `Installing Acme Product by Acme Integration under ${team.slug}`
+          );
+          await expect(client.stderr).toOutput(
+            'Do you want to link this resource to the current project? (Y/n)'
+          );
+          client.stdin.write('y\n');
+          await expect(client.stderr).toOutput(
+            'Terms have not been accepted. Open Vercel Dashboard? (Y/n)'
+          );
+          client.stdin.write('y\n');
+          const exitCode = await exitCodePromise;
+          expect(exitCode, 'exit code for "integration"').toEqual(0);
+          expect(openMock).toHaveBeenCalledWith(
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&projectSlug=vercel-integration-add&defaultResourceName=my-proj-db&source=cli&cmd=add'
+          );
+        });
+
+        it('should include custom --name but not projectSlug in URL when user declines project link', async () => {
+          useProject({
+            ...defaultProject,
+            id: 'vercel-integration-add',
+            name: 'vercel-integration-add',
+          });
+          const cwd = setupUnitFixture('vercel-integration-add');
+          client.cwd = cwd;
+          client.setArgv(
+            'integration',
+            'add',
+            'acme',
+            '--name',
+            'my-nolink-db'
+          );
+          const exitCodePromise = integrationCommand(client);
+          await expect(client.stderr).toOutput(
+            `Installing Acme Product by Acme Integration under ${team.slug}`
+          );
+          await expect(client.stderr).toOutput(
+            'Do you want to link this resource to the current project? (Y/n)'
+          );
+          client.stdin.write('n\n');
+          await expect(client.stderr).toOutput(
+            'Terms have not been accepted. Open Vercel Dashboard? (Y/n)'
+          );
+          client.stdin.write('y\n');
+          const exitCode = await exitCodePromise;
+          expect(exitCode, 'exit code for "integration"').toEqual(0);
+          expect(openMock).toHaveBeenCalledWith(
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&defaultResourceName=my-nolink-db&source=cli&cmd=add'
+          );
+        });
       });
 
       describe('with installation', () => {
@@ -646,6 +731,65 @@ describe('integration', () => {
             'Error: Resource name cannot exceed 64 characters'
           );
           expect(exitCode).toEqual(1);
+        });
+
+        it('should accept -n shorthand for --name flag', async () => {
+          client.setArgv('integration', 'add', 'acme', '-n', 'shorthand-name');
+          const exitCodePromise = integrationCommand(client);
+          await expect(client.stderr).toOutput(
+            `Installing Acme Product by Acme Integration under ${team.slug}`
+          );
+
+          await expect(client.stderr).toOutput(
+            'Choose your region (Use arrow keys)'
+          );
+          client.stdin.write('\n');
+          await expect(client.stderr).toOutput(
+            'Choose a billing plan (Use arrow keys)'
+          );
+          client.stdin.write('\n');
+          await expect(client.stderr).toOutput(
+            `Selected product:
+- Name: shorthand-name
+- Primary Region: us-west-1
+- Plan: Pro Plan
+? Confirm selection? (Y/n)`
+          );
+          client.stdin.write('y\n');
+
+          await expect(client.stderr).toOutput('Validating payment...');
+          await expect(client.stderr).toOutput('Validation complete.');
+          await expect(client.stderr).toOutput(
+            'Acme Product successfully provisioned'
+          );
+          const exitCode = await exitCodePromise;
+          expect(exitCode).toEqual(0);
+        });
+
+        it('should accept exactly 64 character resource name', async () => {
+          const maxName = 'a'.repeat(64);
+          client.setArgv('integration', 'add', 'acme', '--name', maxName);
+          const exitCodePromise = integrationCommand(client);
+          await expect(client.stderr).toOutput(
+            `Installing Acme Product by Acme Integration under ${team.slug}`
+          );
+
+          await expect(client.stderr).toOutput(
+            'Choose your region (Use arrow keys)'
+          );
+          client.stdin.write('\n');
+          await expect(client.stderr).toOutput(
+            'Choose a billing plan (Use arrow keys)'
+          );
+          client.stdin.write('\n');
+          await expect(client.stderr).toOutput(`- Name: ${maxName}`);
+          client.stdin.write('y\n');
+
+          await expect(client.stderr).toOutput(
+            'Acme Product successfully provisioned'
+          );
+          const exitCode = await exitCodePromise;
+          expect(exitCode).toEqual(0);
         });
       });
 

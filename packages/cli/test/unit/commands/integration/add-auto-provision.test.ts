@@ -268,7 +268,7 @@ describe('integration add (auto-provision)', () => {
       expect(openMock).toHaveBeenCalled();
     });
 
-    it('should include projectSlug when user consents to link project', async () => {
+    it('should include all three URL params (projectSlug, defaultResourceName, source) when user consents to link project', async () => {
       useAutoProvision({ responseKey: 'metadata' });
       useProject({
         ...defaultProject,
@@ -295,6 +295,10 @@ describe('integration add (auto-provision)', () => {
 
       const exitCode = await exitCodePromise;
       expect(exitCode).toEqual(0);
+      // Verify all three URL parameters are present
+      expect(openMock).toHaveBeenCalledWith(
+        expect.stringMatching(/defaultResourceName=acme-gray-apple/)
+      );
       expect(openMock).toHaveBeenCalledWith(
         expect.stringMatching(/projectSlug=vercel-integration-add/)
       );
@@ -303,7 +307,7 @@ describe('integration add (auto-provision)', () => {
       );
     });
 
-    it('should not include projectSlug when user declines to link project', async () => {
+    it('should include defaultResourceName and source but not projectSlug when user declines to link project', async () => {
       useAutoProvision({ responseKey: 'metadata' });
       useProject({
         ...defaultProject,
@@ -330,6 +334,109 @@ describe('integration add (auto-provision)', () => {
 
       const exitCode = await exitCodePromise;
       expect(exitCode).toEqual(0);
+      // Verify defaultResourceName and source are present, but not projectSlug
+      expect(openMock).toHaveBeenCalledWith(
+        expect.stringMatching(/defaultResourceName=acme-gray-apple/)
+      );
+      expect(openMock).toHaveBeenCalledWith(
+        expect.not.stringMatching(/projectSlug=/)
+      );
+      expect(openMock).toHaveBeenCalledWith(
+        expect.stringMatching(/source=cli/)
+      );
+    });
+
+    it('should include custom --name in URL when fallback to browser without project', async () => {
+      useAutoProvision({ responseKey: 'metadata' });
+
+      client.setArgv('integration', 'add', 'acme', '--name', 'my-custom-db');
+      const exitCodePromise = integrationCommand(client);
+
+      await expect(client.stderr).toOutput('Choose your region');
+      client.stdin.write('\n');
+
+      await expect(client.stderr).toOutput(
+        'Additional setup required. Opening browser...'
+      );
+
+      const exitCode = await exitCodePromise;
+      expect(exitCode).toEqual(0);
+      expect(openMock).toHaveBeenCalledWith(
+        expect.stringMatching(/defaultResourceName=my-custom-db/)
+      );
+      expect(openMock).toHaveBeenCalledWith(
+        expect.stringMatching(/source=cli/)
+      );
+    });
+
+    it('should include custom --name and projectSlug in URL when user accepts project link', async () => {
+      useAutoProvision({ responseKey: 'metadata' });
+      useProject({
+        ...defaultProject,
+        id: 'vercel-integration-add',
+        name: 'vercel-integration-add',
+      });
+      const cwd = setupUnitFixture('vercel-integration-add');
+      client.cwd = cwd;
+
+      client.setArgv('integration', 'add', 'acme', '--name', 'my-proj-db');
+      const exitCodePromise = integrationCommand(client);
+
+      await expect(client.stderr).toOutput('Choose your region');
+      client.stdin.write('\n');
+
+      await expect(client.stderr).toOutput(
+        'Do you want to link this resource to the current project?'
+      );
+      client.stdin.write('y\n');
+
+      await expect(client.stderr).toOutput(
+        'Additional setup required. Opening browser...'
+      );
+
+      const exitCode = await exitCodePromise;
+      expect(exitCode).toEqual(0);
+      expect(openMock).toHaveBeenCalledWith(
+        expect.stringMatching(/defaultResourceName=my-proj-db/)
+      );
+      expect(openMock).toHaveBeenCalledWith(
+        expect.stringMatching(/projectSlug=vercel-integration-add/)
+      );
+      expect(openMock).toHaveBeenCalledWith(
+        expect.stringMatching(/source=cli/)
+      );
+    });
+
+    it('should include custom --name but not projectSlug in URL when user declines project link', async () => {
+      useAutoProvision({ responseKey: 'metadata' });
+      useProject({
+        ...defaultProject,
+        id: 'vercel-integration-add',
+        name: 'vercel-integration-add',
+      });
+      const cwd = setupUnitFixture('vercel-integration-add');
+      client.cwd = cwd;
+
+      client.setArgv('integration', 'add', 'acme', '--name', 'my-nolink-db');
+      const exitCodePromise = integrationCommand(client);
+
+      await expect(client.stderr).toOutput('Choose your region');
+      client.stdin.write('\n');
+
+      await expect(client.stderr).toOutput(
+        'Do you want to link this resource to the current project?'
+      );
+      client.stdin.write('n\n');
+
+      await expect(client.stderr).toOutput(
+        'Additional setup required. Opening browser...'
+      );
+
+      const exitCode = await exitCodePromise;
+      expect(exitCode).toEqual(0);
+      expect(openMock).toHaveBeenCalledWith(
+        expect.stringMatching(/defaultResourceName=my-nolink-db/)
+      );
       expect(openMock).toHaveBeenCalledWith(
         expect.not.stringMatching(/projectSlug=/)
       );
@@ -388,6 +495,37 @@ describe('integration add (auto-provision)', () => {
         'Error: Resource name cannot exceed 64 characters'
       );
       expect(exitCode).toEqual(1);
+    });
+
+    it('should accept -n shorthand for --name flag', async () => {
+      client.setArgv('integration', 'add', 'acme', '-n', 'shorthand-name');
+      const exitCodePromise = integrationCommand(client);
+
+      await expect(client.stderr).toOutput('Choose your region');
+      client.stdin.write('\n');
+
+      await expect(client.stderr).toOutput(
+        'Acme Product successfully provisioned'
+      );
+
+      const exitCode = await exitCodePromise;
+      expect(exitCode).toEqual(0);
+    });
+
+    it('should accept exactly 64 character resource name', async () => {
+      const maxName = 'a'.repeat(64);
+      client.setArgv('integration', 'add', 'acme', '--name', maxName);
+      const exitCodePromise = integrationCommand(client);
+
+      await expect(client.stderr).toOutput('Choose your region');
+      client.stdin.write('\n');
+
+      await expect(client.stderr).toOutput(
+        'Acme Product successfully provisioned'
+      );
+
+      const exitCode = await exitCodePromise;
+      expect(exitCode).toEqual(0);
     });
   });
 

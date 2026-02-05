@@ -1,3 +1,4 @@
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   generateRandomNameSuffix,
   generateDefaultResourceName,
@@ -6,7 +7,7 @@ import {
 
 describe('generateRandomNameSuffix', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('returns format color-noun', () => {
@@ -15,24 +16,24 @@ describe('generateRandomNameSuffix', () => {
   });
 
   it('returns first color and noun when random is 0', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0);
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     expect(generateRandomNameSuffix()).toBe('gray-apple');
   });
 
   it('returns last color and noun when random approaches 1', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0.999);
+    vi.spyOn(Math, 'random').mockReturnValue(0.999);
     expect(generateRandomNameSuffix()).toBe('sky-grass');
   });
 
   it('has uniform distribution (edge elements are not biased)', () => {
     // With Math.floor(arr.length * Math.random()), all indices have equal probability
     // Test that index 0 is reachable with random = 0
-    jest.spyOn(Math, 'random').mockReturnValue(0);
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     const result1 = generateRandomNameSuffix();
     expect(result1).toBe('gray-apple');
 
     // Test that last index is reachable with random just under 1
-    jest.spyOn(Math, 'random').mockReturnValue(0.9999);
+    vi.spyOn(Math, 'random').mockReturnValue(0.9999);
     const result2 = generateRandomNameSuffix();
     expect(result2).toBe('sky-grass');
   });
@@ -40,16 +41,16 @@ describe('generateRandomNameSuffix', () => {
 
 describe('generateDefaultResourceName', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('prefixes with product slug', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0);
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     expect(generateDefaultResourceName('neon')).toBe('neon-gray-apple');
   });
 
   it('works with different product slugs', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0);
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     expect(generateDefaultResourceName('upstash-redis')).toBe(
       'upstash-redis-gray-apple'
     );

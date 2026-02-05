@@ -232,6 +232,7 @@ function provisionResourceViaWebUI(
   }
   url.searchParams.set('cmd', 'add');
   output.print('Opening the Vercel Dashboard to continue the installation...');
+  output.debug(`Opening URL: ${url.href}`);
   open(url.href);
 }
 

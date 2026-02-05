@@ -14,7 +14,8 @@ export const addSubcommand = {
   options: [
     {
       name: 'name',
-      description: 'Name for the resource (auto-generated if not provided)',
+      description:
+        'Custom name for the resource (auto-generated as {product}-{color}-{noun} if not provided)',
       shorthand: 'n',
       type: String,
       deprecated: false,
@@ -23,7 +24,7 @@ export const addSubcommand = {
   ],
   examples: [
     {
-      name: 'Install a marketplace integration',
+      name: 'Install a marketplace integration (auto-generates resource name)',
       value: [
         `${packageName} integration add <integration-name>`,
         `${packageName} integration add acme`,
@@ -31,7 +32,10 @@ export const addSubcommand = {
     },
     {
       name: 'Install with a custom resource name',
-      value: [`${packageName} integration add acme --name my-database`],
+      value: [
+        `${packageName} integration add acme --name my-database`,
+        `${packageName} integration add acme -n my-database`,
+      ],
     },
   ],
 } as const;
