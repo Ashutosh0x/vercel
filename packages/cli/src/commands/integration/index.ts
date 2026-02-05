@@ -75,19 +75,26 @@ export default async function main(client: Client) {
         telemetry.trackCliFlagHelp('integration', subcommandOriginal);
         printHelp(addSubcommand);
 
-        // If integration name provided, show metadata schema
+        // If integration name provided, show metadata schema for ALL products
         const integrationSlug = subArgs[0];
         if (integrationSlug) {
           try {
             const integration = await fetchIntegration(client, integrationSlug);
-            const product = integration.products?.[0];
-            if (product?.metadataSchema) {
-              output.print(
-                formatMetadataSchemaHelp(
-                  product.metadataSchema,
-                  integrationSlug
-                )
-              );
+            const products = integration.products ?? [];
+            for (const product of products) {
+              if (product.metadataSchema) {
+                // For single-product integrations, don't show product name
+                // For multi-product integrations, show product name
+                const productName =
+                  products.length > 1 ? product.name : undefined;
+                output.print(
+                  formatMetadataSchemaHelp(
+                    product.metadataSchema,
+                    integrationSlug,
+                    productName
+                  )
+                );
+              }
             }
           } catch {
             // Integration not found, just show standard help

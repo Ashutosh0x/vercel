@@ -3,14 +3,21 @@ import type { MetadataSchema } from './types';
 
 /**
  * Format metadata schema as help text for CLI display
+ * @param schema The metadata schema to format
+ * @param integrationName The integration slug/name
+ * @param productName Optional product name (for multi-product integrations)
  */
 export function formatMetadataSchemaHelp(
   schema: MetadataSchema,
-  integrationName: string
+  integrationName: string,
+  productName?: string
 ): string {
   const lines: string[] = [];
   lines.push('');
-  lines.push(chalk.bold(`  Metadata options for "${integrationName}":`));
+  const header = productName
+    ? `  Metadata options for "${integrationName}" (${productName}):`
+    : `  Metadata options for "${integrationName}":`;
+  lines.push(chalk.bold(header));
   lines.push('');
 
   const required = new Set(schema.required ?? []);

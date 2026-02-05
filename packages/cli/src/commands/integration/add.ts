@@ -148,14 +148,19 @@ export async function add(client: Client, args: string[]) {
   const metadataWizard = createMetadataWizard(metadataSchema);
 
   // Validate --metadata flags early (fail fast, even if CLI provisioning not supported)
+  let parsedMetadata: Metadata | undefined;
   if (metadataFlags?.length) {
-    const { errors } = parseMetadataFlags(metadataFlags, metadataSchema);
+    const { metadata: parsed, errors } = parseMetadataFlags(
+      metadataFlags,
+      metadataSchema
+    );
     if (errors.length) {
       for (const error of errors) {
         output.error(error);
       }
       return 1;
     }
+    parsedMetadata = parsed;
   }
 
   // The provisioning via cli is possible when
@@ -163,7 +168,7 @@ export async function add(client: Client, args: string[]) {
   // 2. EITHER metadata is provided via flags OR wizard is supported
   // 3. The selected billing plan is supported (handled at time of billing plan selection)
   const provisionResourceViaCLIIsSupported =
-    installation && (metadataFlags?.length || metadataWizard.isSupported);
+    installation && (parsedMetadata || metadataWizard.isSupported);
 
   if (!provisionResourceViaCLIIsSupported) {
     const projectLink = await getOptionalLinkedProject(client);
@@ -198,7 +203,7 @@ export async function add(client: Client, args: string[]) {
     installation,
     product,
     metadataWizard,
-    metadataFlags
+    parsedMetadata
   );
 }
 
@@ -250,28 +255,21 @@ async function provisionResourceViaCLI(
   installation: IntegrationInstallation,
   product: IntegrationProduct,
   metadataWizard: MetadataWizard,
-  metadataFlags?: string[]
+  parsedMetadata?: Metadata
 ) {
-  // Validate/collect metadata BEFORE prompting for resource name (fail fast)
-  let metadata: Metadata;
-  if (metadataFlags?.length) {
-    // Parse metadata from CLI flags
-    output.debug(
-      `Parsing metadata from flags: ${JSON.stringify(metadataFlags)}`
+  // Metadata already validated in add() - just check TTY mode for wizard
+  if (!parsedMetadata && !client.stdin.isTTY) {
+    // Non-interactive without flags: error (OLD path doesn't have server defaults)
+    output.error(
+      'Metadata is required in non-interactive mode. Use --metadata KEY=VALUE flags.'
     );
-    const { metadata: parsed, errors } = parseMetadataFlags(
-      metadataFlags,
-      product.metadataSchema
-    );
-    if (errors.length) {
-      for (const error of errors) {
-        output.error(error);
-      }
-      return 1;
-    }
-    // OLD path: validate required fields (server won't fill defaults)
+    return 1;
+  }
+
+  // OLD path: validate required fields if metadata was provided via flags
+  if (parsedMetadata) {
     const missingErrors = validateRequiredMetadata(
-      parsed,
+      parsedMetadata,
       product.metadataSchema
     );
     if (missingErrors.length) {
@@ -280,23 +278,15 @@ async function provisionResourceViaCLI(
       }
       return 1;
     }
-    metadata = parsed;
-  } else if (!client.stdin.isTTY) {
-    // Non-interactive without flags: error (OLD path doesn't have server defaults)
-    output.error(
-      'Metadata is required in non-interactive mode. Use --metadata KEY=VALUE flags.'
-    );
-    return 1;
   }
 
   const name = await client.input.text({
     message: 'What is the name of the resource?',
   });
 
-  // Run wizard after resource name if in interactive mode without --metadata flags
-  if (!metadataFlags?.length && client.stdin.isTTY) {
-    metadata = await metadataWizard.run(client);
-  }
+  // Get metadata from flags or wizard
+  const metadata: Metadata =
+    parsedMetadata ?? (await metadataWizard.run(client));
 
   let billingPlans: BillingPlan[] | undefined;
   try {
