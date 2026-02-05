@@ -11,13 +11,30 @@ export const addSubcommand = {
       required: true,
     },
   ],
-  options: [],
+  options: [
+    {
+      name: 'metadata',
+      description:
+        'Metadata for the resource as KEY=VALUE (can be repeated). Run `vercel integration add <name> --help` to see available keys.',
+      shorthand: 'm',
+      type: [String],
+      deprecated: false,
+      argument: 'KEY=VALUE',
+    },
+  ],
   examples: [
     {
       name: 'Install a marketplace integration',
       value: [
         `${packageName} integration add <integration-name>`,
         `${packageName} integration add acme`,
+      ],
+    },
+    {
+      name: 'Install with metadata options',
+      value: [
+        `${packageName} integration add acme --metadata region=us-east-1`,
+        `${packageName} integration add acme -m region=us-east-1 -m version=16`,
       ],
     },
   ],

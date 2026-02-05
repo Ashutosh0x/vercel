@@ -17,6 +17,10 @@ import type {
 } from '../../util/integration/types';
 import { createMetadataWizard, type MetadataWizard } from './wizard';
 import { provisionStoreResource } from '../../util/integration/provision-store-resource';
+import {
+  parseMetadataFlags,
+  validateRequiredMetadata,
+} from '../../util/integration/parse-metadata';
 import { addAutoProvision } from './add-auto-provision';
 import { connectResourceToProject } from '../../util/integration-resource/connect-resource-to-project';
 import { fetchBillingPlans } from '../../util/integration/fetch-billing-plans';
@@ -27,20 +31,38 @@ import { IntegrationAddTelemetryClient } from '../../util/telemetry/commands/int
 import { createAuthorization } from '../../util/integration/create-authorization';
 import sleep from '../../util/sleep';
 import { fetchAuthorization } from '../../util/integration/fetch-authorization';
+import { getFlagsSpecification } from '../../util/get-flags-specification';
+import { parseArguments } from '../../util/get-args';
+import { printError } from '../../util/error';
+import { addSubcommand } from './command';
 
 export async function add(client: Client, args: string[]) {
+  // Parse flags from the args passed by index.ts (already excludes "integration add")
+  let parsedArguments;
+  const flagsSpecification = getFlagsSpecification(addSubcommand.options);
+  try {
+    parsedArguments = parseArguments(args, flagsSpecification);
+  } catch (error) {
+    printError(error);
+    return 1;
+  }
+
+  const metadataFlags = parsedArguments.flags['--metadata'] as
+    | string[]
+    | undefined;
+  const parsedArgs = parsedArguments.args;
   const telemetry = new IntegrationAddTelemetryClient({
     opts: {
       store: client.telemetryEventStore,
     },
   });
 
-  if (args.length > 1) {
+  if (parsedArgs.length > 1) {
     output.error('Cannot install more than one integration at a time');
     return 1;
   }
 
-  const integrationSlug = args[0];
+  const integrationSlug = parsedArgs[0];
 
   if (!integrationSlug) {
     output.error('You must pass an integration slug');
@@ -49,7 +71,9 @@ export async function add(client: Client, args: string[]) {
 
   // Auto-provision: completely separate code path
   if (process.env.FF_AUTO_PROVISION_INSTALL === '1') {
-    return await addAutoProvision(client, integrationSlug);
+    return await addAutoProvision(client, integrationSlug, {
+      metadata: metadataFlags,
+    });
   }
 
   const { contextName, team } = await getScope(client);
@@ -123,12 +147,23 @@ export async function add(client: Client, args: string[]) {
   const metadataSchema = product.metadataSchema;
   const metadataWizard = createMetadataWizard(metadataSchema);
 
+  // Validate --metadata flags early (fail fast, even if CLI provisioning not supported)
+  if (metadataFlags?.length) {
+    const { errors } = parseMetadataFlags(metadataFlags, metadataSchema);
+    if (errors.length) {
+      for (const error of errors) {
+        output.error(error);
+      }
+      return 1;
+    }
+  }
+
   // The provisioning via cli is possible when
   // 1. The integration was installed once (terms have been accepted)
-  // 2. The provider-defined metadata is supported (does not use metadata expressions etc.)
+  // 2. EITHER metadata is provided via flags OR wizard is supported
   // 3. The selected billing plan is supported (handled at time of billing plan selection)
   const provisionResourceViaCLIIsSupported =
-    installation && metadataWizard.isSupported;
+    installation && (metadataFlags?.length || metadataWizard.isSupported);
 
   if (!provisionResourceViaCLIIsSupported) {
     const projectLink = await getOptionalLinkedProject(client);
@@ -162,7 +197,8 @@ export async function add(client: Client, args: string[]) {
     integration,
     installation,
     product,
-    metadataWizard
+    metadataWizard,
+    metadataFlags
   );
 }
 
@@ -213,13 +249,54 @@ async function provisionResourceViaCLI(
   integration: Integration,
   installation: IntegrationInstallation,
   product: IntegrationProduct,
-  metadataWizard: MetadataWizard
+  metadataWizard: MetadataWizard,
+  metadataFlags?: string[]
 ) {
+  // Validate/collect metadata BEFORE prompting for resource name (fail fast)
+  let metadata: Metadata;
+  if (metadataFlags?.length) {
+    // Parse metadata from CLI flags
+    output.debug(
+      `Parsing metadata from flags: ${JSON.stringify(metadataFlags)}`
+    );
+    const { metadata: parsed, errors } = parseMetadataFlags(
+      metadataFlags,
+      product.metadataSchema
+    );
+    if (errors.length) {
+      for (const error of errors) {
+        output.error(error);
+      }
+      return 1;
+    }
+    // OLD path: validate required fields (server won't fill defaults)
+    const missingErrors = validateRequiredMetadata(
+      parsed,
+      product.metadataSchema
+    );
+    if (missingErrors.length) {
+      for (const error of missingErrors) {
+        output.error(error);
+      }
+      return 1;
+    }
+    metadata = parsed;
+  } else if (!client.stdin.isTTY) {
+    // Non-interactive without flags: error (OLD path doesn't have server defaults)
+    output.error(
+      'Metadata is required in non-interactive mode. Use --metadata KEY=VALUE flags.'
+    );
+    return 1;
+  }
+
   const name = await client.input.text({
     message: 'What is the name of the resource?',
   });
 
-  const metadata = await metadataWizard.run(client);
+  // Run wizard after resource name if in interactive mode without --metadata flags
+  if (!metadataFlags?.length && client.stdin.isTTY) {
+    metadata = await metadataWizard.run(client);
+  }
 
   let billingPlans: BillingPlan[] | undefined;
   try {

@@ -48,9 +48,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt
       await expect(client.stderr).toOutput(
         'Acme Product successfully provisioned'
       );
@@ -78,9 +76,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt
       await expect(client.stderr).toOutput(
         'Acme Product successfully provisioned'
       );
@@ -116,9 +112,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt
       await expect(client.stderr).toOutput(
         'Acme Product successfully provisioned'
       );
@@ -139,9 +133,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt
       await expect(client.stderr).toOutput(
         'Acme Product successfully provisioned'
       );
@@ -177,9 +169,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt - goes straight to policies
       await expect(client.stderr).toOutput('Accept privacy policy?');
       client.stdin.write('y\n');
 
@@ -201,9 +191,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt
       await expect(client.stderr).toOutput('Accept privacy policy?');
       client.stdin.write('n\n');
 
@@ -222,9 +210,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt
       await expect(client.stderr).toOutput('Accept privacy policy?');
       client.stdin.write('y\n');
 
@@ -250,9 +236,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt - goes straight to fallback
       await expect(client.stderr).toOutput(
         'Additional setup required. Opening browser...'
       );
@@ -281,9 +265,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt - goes straight to fallback
       await expect(client.stderr).toOutput(
         'Additional setup required. Opening browser...'
       );
@@ -309,9 +291,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt
       await expect(client.stderr).toOutput(
         'Do you want to link this resource to the current project?'
       );
@@ -347,9 +327,7 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt
       await expect(client.stderr).toOutput(
         'Do you want to link this resource to the current project?'
       );
@@ -387,9 +365,7 @@ describe('integration add (auto-provision)', () => {
       // Provide valid name to continue
       client.stdin.write('valid-name\n');
 
-      await expect(client.stderr).toOutput('Choose your region');
-      client.stdin.write('\n');
-
+      // NEW path: server fills defaults, no wizard prompt
       await expect(client.stderr).toOutput(
         'Acme Product successfully provisioned'
       );
@@ -449,13 +425,113 @@ describe('integration add (auto-provision)', () => {
       await expect(client.stderr).toOutput('What is the name of the resource?');
       client.stdin.write('test-resource\n');
 
-      // acme-two-products uses metadataSchema2 which has version and region
-      await expect(client.stderr).toOutput('Version');
-      client.stdin.write('\n');
+      // NEW path: server fills defaults, no wizard prompt (no Version/Region prompts)
+      await expect(client.stderr).toOutput('successfully provisioned');
 
-      await expect(client.stderr).toOutput('Region');
-      client.stdin.write('\n');
+      const exitCode = await exitCodePromise;
+      expect(exitCode).toEqual(0);
+    });
+  });
 
+  describe('--metadata flag', () => {
+    beforeEach(() => {
+      useAutoProvision({ responseKey: 'provisioned' });
+    });
+
+    it('should error on invalid metadata value before prompting for resource name', async () => {
+      client.setArgv(
+        'integration',
+        'add',
+        'acme',
+        '--metadata',
+        'region=invalid-region'
+      );
+      const exitCode = await integrationCommand(client);
+      expect(exitCode).toEqual(1);
+      await expect(client.stderr).toOutput(
+        'Error: Metadata "region" must be one of: us-west-1, us-east-1'
+      );
+      // Should NOT prompt for resource name since validation fails first
+      await expect(client.stderr).not.toOutput(
+        'What is the name of the resource?'
+      );
+    });
+
+    it('should error on unknown metadata key', async () => {
+      client.setArgv(
+        'integration',
+        'add',
+        'acme',
+        '--metadata',
+        'unknown=value'
+      );
+      const exitCode = await integrationCommand(client);
+      expect(exitCode).toEqual(1);
+      await expect(client.stderr).toOutput(
+        'Error: Unknown metadata key: "unknown"'
+      );
+    });
+
+    it('should error on invalid metadata format', async () => {
+      client.setArgv(
+        'integration',
+        'add',
+        'acme',
+        '--metadata',
+        'no-equals-sign'
+      );
+      const exitCode = await integrationCommand(client);
+      expect(exitCode).toEqual(1);
+      await expect(client.stderr).toOutput(
+        'Error: Invalid metadata format: "no-equals-sign". Expected KEY=VALUE'
+      );
+    });
+
+    it('should accept valid metadata and skip wizard prompts', async () => {
+      client.setArgv(
+        'integration',
+        'add',
+        'acme',
+        '--metadata',
+        'region=us-east-1'
+      );
+      const exitCodePromise = integrationCommand(client);
+
+      await expect(client.stderr).toOutput(
+        `Installing Acme Product by Acme Integration under ${team.slug}`
+      );
+
+      // Should prompt for resource name
+      await expect(client.stderr).toOutput('What is the name of the resource?');
+      client.stdin.write('test-resource\n');
+
+      // Should skip region wizard since --metadata provided
+      // Goes straight to provisioning
+      await expect(client.stderr).toOutput('successfully provisioned');
+
+      const exitCode = await exitCodePromise;
+      expect(exitCode).toEqual(0);
+    });
+
+    it('should accept multiple metadata flags', async () => {
+      client.setArgv(
+        'integration',
+        'add',
+        'acme-two-products',
+        '--metadata',
+        'version=5.4',
+        '--metadata',
+        'region=pdx1'
+      );
+      const exitCodePromise = integrationCommand(client);
+
+      await expect(client.stderr).toOutput('Select a product');
+      client.stdin.write('\n'); // Select first product (uses metadataSchema2)
+
+      await expect(client.stderr).toOutput('What is the name of the resource?');
+      client.stdin.write('test-resource\n');
+
+      // Should skip version and region wizard since --metadata provided
       await expect(client.stderr).toOutput('successfully provisioned');
 
       const exitCode = await exitCodePromise;

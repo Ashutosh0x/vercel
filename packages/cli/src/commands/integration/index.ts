@@ -20,6 +20,8 @@ import {
 import { list } from './list';
 import { openIntegration } from './open-integration';
 import { remove } from './remove-integration';
+import { fetchIntegration } from '../../util/integration/fetch-integration';
+import { formatMetadataSchemaHelp } from '../../util/integration/format-schema-help';
 
 const COMMAND_CONFIG = {
   add: getCommandAliases(addSubcommand),
@@ -72,6 +74,25 @@ export default async function main(client: Client) {
       if (needHelp) {
         telemetry.trackCliFlagHelp('integration', subcommandOriginal);
         printHelp(addSubcommand);
+
+        // If integration name provided, show metadata schema
+        const integrationSlug = subArgs[0];
+        if (integrationSlug) {
+          try {
+            const integration = await fetchIntegration(client, integrationSlug);
+            const product = integration.products?.[0];
+            if (product?.metadataSchema) {
+              output.print(
+                formatMetadataSchemaHelp(
+                  product.metadataSchema,
+                  integrationSlug
+                )
+              );
+            }
+          } catch {
+            // Integration not found, just show standard help
+          }
+        }
         return 0;
       }
       telemetry.trackCliSubcommandAdd(subcommandOriginal);
