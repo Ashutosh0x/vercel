@@ -61,6 +61,7 @@ export async function* continueDeployment(options: {
     deploymentId: options.deploymentId,
     files,
     outputDir,
+    path: options.path,
     token: options.token,
     teamId: options.teamId,
     apiUrl: options.apiUrl,
@@ -104,6 +105,7 @@ export async function* continueDeployment(options: {
       deploymentId: options.deploymentId,
       files,
       outputDir,
+      path: options.path,
       token: options.token,
       teamId: options.teamId,
       apiUrl: options.apiUrl,
@@ -166,6 +168,7 @@ async function postContinue(options: {
   deploymentId: string;
   files: FilesMap;
   outputDir: string;
+  path: string;
   teamId?: string;
   token: string;
   userAgent?: string;
