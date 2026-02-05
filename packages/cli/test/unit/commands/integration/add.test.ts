@@ -193,7 +193,7 @@ describe('integration', () => {
           );
         });
 
-        it('should include custom --name and projectSlug in URL when user accepts project link', async () => {
+        it('should include custom --name and projectId in URL when user accepts project link', async () => {
           useProject({
             ...defaultProject,
             id: 'vercel-integration-add',
@@ -217,11 +217,11 @@ describe('integration', () => {
           const exitCode = await exitCodePromise;
           expect(exitCode, 'exit code for "integration"').toEqual(0);
           expect(openMock).toHaveBeenCalledWith(
-            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&projectSlug=vercel-integration-add&defaultResourceName=my-proj-db&cmd=add'
+            'https://vercel.com/api/marketplace/cli?teamId=team_dummy&integrationId=acme&productId=acme-product&projectId=vercel-integration-add&defaultResourceName=my-proj-db&cmd=add'
           );
         });
 
-        it('should include custom --name but not projectSlug in URL when user declines project link', async () => {
+        it('should include custom --name but not projectId in URL when user declines project link', async () => {
           useProject({
             ...defaultProject,
             id: 'vercel-integration-add',
