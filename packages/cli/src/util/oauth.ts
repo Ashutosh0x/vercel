@@ -1,4 +1,3 @@
-import fetch, { type Response } from 'node-fetch';
 import ua from './ua';
 import { hostname } from 'os';
 

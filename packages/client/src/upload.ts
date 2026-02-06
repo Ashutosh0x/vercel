@@ -152,7 +152,6 @@ export async function* upload(
               teamId,
               apiUrl,
               userAgent,
-              // @ts-expect-error: typescript is getting confused with the signal types from node (web & server) and node-fetch (server only)
               signal: abortController.signal,
             },
             clientOptions.debug

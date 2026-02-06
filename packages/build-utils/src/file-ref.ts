@@ -1,5 +1,5 @@
 import assert from 'assert';
-import fetch from 'node-fetch';
+import { Readable } from 'stream';
 import multiStream from 'multistream';
 import retry from 'async-retry';
 import Sema from 'async-sema';
@@ -114,7 +114,11 @@ export default class FileRef implements FileBase {
             if (resp.status === 403) error.bail = true;
             throw error;
           }
-          return resp.body;
+          if (!resp.body) {
+            throw new Error(`download: empty body for ${url}`);
+          }
+          // Convert Web ReadableStream to Node.js Readable
+          return Readable.fromWeb(resp.body);
         },
         { factor: 1, retries: 3 }
       );

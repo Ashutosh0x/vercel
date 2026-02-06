@@ -37,7 +37,7 @@
     "url": "https://github.com/vercel/vercel/issues"
   },
   "engines": {
-    "node": ">=14"
+    "node": ">=18"
   },
   "scripts": {
     "build": "node ../../utils/build.mjs",

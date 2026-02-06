@@ -13,12 +13,6 @@ import retry, {
   type RetryFunction,
   type Options as RetryOptions,
 } from 'async-retry';
-import fetch, {
-  type BodyInit,
-  Headers,
-  type RequestInit,
-  type Response,
-} from 'node-fetch';
 import ua from './ua';
 import responseError from './response-error';
 import printIndications from './print-indications';

@@ -1,6 +1,4 @@
 import { createServer } from 'http';
-import { Headers } from 'node-fetch';
-import type { HeadersInit } from 'node-fetch';
 import {
   toOutgoingHeaders,
   mergeIntoServerResponse,
