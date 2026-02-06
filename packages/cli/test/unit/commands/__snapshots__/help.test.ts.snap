@@ -2775,6 +2775,12 @@ exports[`help command > integration help output snapshots > integration help col
                               number    
 
 
+  Examples:
+
+  - Install a specific product from an integration
+
+    $ vercel integration add acme/acme-redis
+
 "
 `;
 
@@ -2806,6 +2812,12 @@ exports[`help command > integration help output snapshots > integration help col
   -v,  --version              Output the version number                         
 
 
+  Examples:
+
+  - Install a specific product from an integration
+
+    $ vercel integration add acme/acme-redis
+
 "
 `;
 
@@ -2835,6 +2847,12 @@ exports[`help command > integration help output snapshots > integration help col
   -t,  --token <TOKEN>        Login token                                                                               
   -v,  --version              Output the version number                                                                 
 
+
+  Examples:
+
+  - Install a specific product from an integration
+
+    $ vercel integration add acme/acme-redis
 
 "
 `;
