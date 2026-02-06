@@ -19,6 +19,7 @@
     "test-dev": "pnpm test test/dev/",
     "coverage": "codecov",
     "build": "node scripts/build.mjs",
+    "build:check-dupes": "node scripts/build.mjs --check-duplicates",
     "dev": "echo \"'pnpm dev [command]' has been removed. Use 'pnpm vercel [command]' instead.\" && exit 1",
     "vercel": "pnpm build && node ./dist/vc.js",
     "vc": "pnpm vercel",

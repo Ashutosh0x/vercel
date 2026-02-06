@@ -41,13 +41,13 @@ export async function esbuild(
 
   const entryPoints = opts.bundle
     ? // When bundling, assume `src/index.ts` is the entrypoint file
-      [path.join(cwd, 'src/index.ts')]
+    [path.join(cwd, 'src/index.ts')]
     : // When not bundling, compile all files referenced by the `tsconfig.json` file
-      tsconfig.fileNames;
+    tsconfig.fileNames;
 
   let outdir = opts.outfile ? undefined : tsconfig.options.outDir;
 
-  await build({
+  return await build({
     entryPoints,
     format: 'cjs',
     outdir,

@@ -1,9 +1,14 @@
 import { join } from 'node:path';
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { esbuild } from '../../../utils/build.mjs';
 import { compileDevTemplates } from './compile-templates.mjs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const checkDuplicates = process.argv.includes('--check-duplicates');
+const analyzeBuild = process.argv.includes('--analyze');
 
 const repoRoot = new URL('../', import.meta.url);
 
@@ -33,10 +38,11 @@ const pkgPath = join(process.cwd(), 'package.json');
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 const externals = Object.keys(pkg.dependencies || {});
 const require = createRequire(import.meta.url);
-await esbuild({
+const result = await esbuild({
   bundle: true,
   format: 'esm',
   external: externals,
+  metafile: checkDuplicates || analyzeBuild,
   banner: {
     // Shim for CommonJS globals in ESM
     js: `
@@ -69,6 +75,27 @@ const __dirname = __dirname_(__filename);
     },
   ],
 });
+
+// Write metafile and check for duplicates if requested
+if (result.metafile) {
+  const metafilePath = join(process.cwd(), 'metadata.json');
+  writeFileSync(metafilePath, JSON.stringify(result.metafile, null, 2));
+
+  if (checkDuplicates) {
+    const { execSync } = await import('node:child_process');
+    const checkScript = join(__dirname, 'check-duplicates.mjs');
+    try {
+      execSync(`node ${checkScript} --fail`, { stdio: 'inherit' });
+    } catch {
+      process.exit(1);
+    }
+  }
+
+  if (analyzeBuild) {
+    console.log(`\nMetafile written to: ${metafilePath}`);
+    console.log('Run: node scripts/check-duplicates.mjs');
+  }
+}
 
 // Copy a few static files into `dist`
 const distRoot = new URL('dist/', repoRoot);
