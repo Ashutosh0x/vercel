@@ -155,6 +155,9 @@
     ]
   },
   "pnpm": {
-    "neverBuiltDependencies": []
+    "neverBuiltDependencies": [],
+    "overrides": {
+      "mime-types": "^3.0.0"
+    }
   }
 }
